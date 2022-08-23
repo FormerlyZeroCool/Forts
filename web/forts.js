@@ -2994,7 +2994,7 @@ function calc_points_move(attacker, defender, delta_time) {
         //points += 25;
     }
     points -= (enemy_after_time_to_travel_hp + defender.defense_leaving_forces / 2) + attacker.attacking_force;
-    points += defender.attacking_force / 15;
+    points -= defender.attacking_force / 15;
     return points;
 }
 class BattleField {
@@ -3184,6 +3184,17 @@ class Game {
     }
     update_state(delta_time) {
         this.currentField.update_state(delta_time);
+        const faction = this.currentField.forts[0].faction;
+        let counter = 0;
+        while (counter < this.currentField.forts.length) {
+            if (this.currentField.forts[counter].faction !== faction) {
+                break;
+            }
+            counter++;
+        }
+        if (counter === this.currentField.forts.length) {
+            this.currentField = new BattleField([0, 0, this.currentField.dimensions[2], this.currentField.dimensions[3]], this.factions, 10, 20);
+        }
     }
 }
 async function main() {
@@ -3205,11 +3216,12 @@ async function main() {
     let counter = 0;
     const touchScreen = isTouchSupported();
     const factions = [];
-    srand(Math.random() * max_32_bit_signed);
+    srand(6);
     // seeds 607, 197 are pretty good so far lol
-    for (let i = 0; i < 135; i++) {
+    for (let i = 0; i < 10; i++) {
         factions.push(new Faction("Faction " + i, new RGB(random() * 256, random() * 256, random() * 256), 120));
     }
+    srand(Math.random() * max_32_bit_signed);
     const game = new Game(canvas, factions);
     let start = Date.now();
     const drawLoop = async () => {

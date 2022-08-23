@@ -3120,13 +3120,14 @@ class BattleField {
                             break;
                         }
                         else if (other.hp > 0) {
-                            if (other.faction === unit.faction) {
+                            //if(other.faction === unit.faction)
+                            {
                                 if (other.faction.unit_travel_speed < Math.abs(other.y - other.targetFort.y)) {
-                                    other.y -= other.height;
-                                    console.log(other.height);
+                                    unit.y -= other.height;
+                                    console.log("hello poppy", other.height);
                                 }
                                 else {
-                                    other.x -= other.width;
+                                    unit.x -= other.width;
                                 }
                             }
                         }
@@ -3162,7 +3163,7 @@ class Game {
     constructor(canvas, factions) {
         this.factions = factions;
         this.currentField = new BattleField([0, 0, canvas.width, canvas.height], this.factions, 10, 20);
-        const touch_listener = new SingleTouchListener(canvas, false, true, false);
+        const touch_listener = new SingleTouchListener(canvas, true, true, false);
         touch_listener.registerCallBack("touchstart", (e) => true, (event) => {
             console.log("helo");
             this.start_touch_fort = this.currentField.find_nearest_fort(event.touchPos[0], event.touchPos[1]);

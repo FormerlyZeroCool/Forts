@@ -4087,7 +4087,7 @@ async function main()
     let counter = 0;
     const touchScreen:boolean = isTouchSupported();
     const factions:Faction[] = [];
-    srand(124);
+    srand(Math.random() * max_32_bit_signed);
     // seeds 607, 197 are pretty good so far lol
     for(let i = 0; i < 135; i++)
     {

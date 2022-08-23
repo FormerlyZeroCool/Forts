@@ -3093,7 +3093,7 @@ class BattleField {
                     record.fort.faction.count_moves++;
                     record.fort.faction.avg_move_value = record.fort.faction.sum_move_points / record.fort.faction.count_moves;
                     if (max_points > 10) {
-                        console.log(max_points, record.fort.faction.avg_move_value);
+                        console.log(record.fort.faction.name, "\n", max_points, "\n", record.fort.faction.avg_move_value);
                         record.fort.auto_send_units(records[max_index].fort);
                     }
                 }

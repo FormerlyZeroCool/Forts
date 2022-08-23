@@ -3968,33 +3968,36 @@ class BattleField {
             for(let j = 0; j < this.traveling_units.length; j++)
             {
                 const other = this.traveling_units[j];
-                if(other.faction !== unit.faction)
+                if(unit.check_collision(other))
                 {
-                    if(unit.check_collision(other))
+                    if(other.faction !== unit.faction)
                     {
-                        unit.attack(other);
-                        other.attack(unit);
-                        if(other.hp <= 0)
-                            this.traveling_units.splice(j, 1);
+                            unit.attack(other);
+                            other.attack(unit);
+                            if(other.hp <= 0)
+                                this.traveling_units.splice(j, 1);
 
-                        if(unit.hp <= 0)
-                        {
-                            this.traveling_units.splice(i, 1);
-                            break;
-                        }
-                        else if(other.hp > 0)
-                        {
-                            //if(other.faction === unit.faction)
+                            if(unit.hp <= 0)
                             {
-                                if(other.faction.unit_travel_speed < Math.abs(other.y - other.targetFort.y))
-                                {
-                                    unit.y -= other.height;
-                                    console.log("hello poppy",other.height)
-                                }
-                                else
-                                {
-                                    unit.x -= other.width;
-                                }
+                                this.traveling_units.splice(i, 1);
+                                break;
+                            }
+
+                        
+                    }
+                    else
+                    {
+                        if(other.faction === unit.faction)
+                        {
+                            if(other.faction.unit_travel_speed < Math.abs(other.y - other.targetFort.y))
+                            {
+                                //unit.x -= other.width;
+                                //unit.y += unit.height;
+                            }
+                            else
+                            {
+                                //unit.y -= other.height;
+                                //unit.x += unit.width;
                             }
                         }
                         

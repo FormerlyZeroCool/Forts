@@ -3493,7 +3493,7 @@ function getWidth() {
     rand_state *= 1997;
     rand_state ^= rand_state << 7;
     rand_state = Math.abs(rand_state);
-    return (rand_state) / max_32_bit_signed;
+    return (rand_state) * 1 / max_32_bit_signed;
   }
 interface Attackable {
     dim():number[];
@@ -3558,15 +3558,15 @@ class Faction {
     constructor(name:string, color:RGB, fort_reproduction_unit_limit:number)
     {
         this.name = name;
-        this.attack = 5;
+        this.attack = 60;
         this.avg_move_value = 0;
         this.sum_move_points = 0;
         this.count_moves = 0;
-        this.starting_unit_hp = 10;
+        this.starting_unit_hp = 100;
         this.fort_defense = 0.15;
         this.unit_defense = 0.05;
         this.color = color;
-        this.unit_reproduction_per_second = 1;
+        this.unit_reproduction_per_second = 3;
         this.money_production_per_second = 10;
         this.fort_reproduction_unit_limit = fort_reproduction_unit_limit;
         this.unit_travel_speed = 100;
@@ -3634,9 +3634,9 @@ class Unit extends SquareAABBCollidable implements Attackable {
     {
         const rand:number = random() / 10;
         if(hp > 0)
-            this.hp -= hp * rand;
+            this.hp -= hp * (1+rand);
         else
-            this.hp -= 0.01 * rand;
+            this.hp -= 0.01 * (1+rand);
     }
     attack(enemy:Attackable): void
     {
@@ -3693,19 +3693,20 @@ class Fort extends SquareAABBCollidable implements Attackable {
             this.last_update_units_leaving = Date.now();
         }
     }
+    unsend_units():void
+    {
+        while(this.leaving_units.length)
+        {
+            this.units.push(this.leaving_units.pop()!);
+        }
+    }
     send_units(destination:Fort):void
     {
         for(let i = 0; i < this.leaving_units.length; i++)
         {
             this.leaving_units[i].targetFort = destination;
         }
-        for(let i = this.units.length - 1; i >= 0; i--)
-        {
-            const unit = this.units[i];
-            unit.targetFort = destination;
-            this.leaving_units.push(unit);
-            this.units.pop();
-        }
+        this.auto_send_units(destination)
     }
     auto_send_units(destination:Fort):void
     {
@@ -3774,6 +3775,8 @@ class FortAggregate {
     defense_power:number;
     defense_leaving_forces:number;
     attacking_force:number;
+    defense_force_inbound:number;
+
     constructor(fort:Fort, defense_power:number, defense_leaving_forces:number)
     {
         this.fort = fort;
@@ -3786,11 +3789,16 @@ class FortAggregate {
         return this.defense_leaving_forces + this.defense_power;
     }
 };
+class FactionAggregate {
+    faction:Faction;
+    total_units:number;
+    units_attacking:number;
+};
 function calc_points_move(attacker:FortAggregate, defender:FortAggregate, delta_time:number):number
 {
     let points = 0;
     const time_to_travel:number = (distance(attacker.fort, defender.fort) / attacker.fort.faction.unit_travel_speed);
-    const def_repro_per_frame = defender.fort.faction.unit_reproduction_per_second / (1000 / delta_time);
+    const def_repro_per_frame = defender.fort.faction.unit_reproduction_per_second / (60);
 
     const enemy_after_time_to_travel_hp:number = (time_to_travel * def_repro_per_frame < defender.fort.faction.fort_reproduction_unit_limit ?
         time_to_travel * def_repro_per_frame : 
@@ -3799,11 +3807,15 @@ function calc_points_move(attacker:FortAggregate, defender:FortAggregate, delta_
     {
         //points += (attacker.defense_power - enemy_after_time_to_travel_hp * 2) / 5;
         //points -= time_to_travel * (1000 / delta_time);
-        points = -1000;
+        //points = -1000;
+        //points += (attacker.defense_power) - (enemy_after_time_to_travel_hp + defender.defense_leaving_forces);
     }
-    else
-        points += (attacker.defense_power) - (enemy_after_time_to_travel_hp + defender.defense_leaving_forces / 2);
-    points -= attacker.attacking_force;
+    else{
+        points += (attacker.defense_power);
+        //points += 25;
+    }
+    points -= (enemy_after_time_to_travel_hp + defender.defense_leaving_forces / 2) + attacker.attacking_force;
+    points += defender.attacking_force / 15;
 
     return points;
 }
@@ -3884,16 +3896,30 @@ class BattleField {
             {
                 const unit = fort.leaving_units[j];
                 record.defense_leaving_forces += unit.hp * (1 + fort.faction.fort_defense);
+
+                const fort_index:number = fort_index_lookup.get(unit.targetFort)!;
+                if(unit.targetFort.get_faction() !== unit.faction)
+                {
+                    record.attacking_force += unit.hp * (1 + unit.faction.unit_defense);
+                }
+                else
+                {
+                    record.defense_force_inbound += unit.hp * (1 + unit.faction.unit_defense);
+                }
             }
             records.push(record);
         }
         for(let i = 0; i < this.traveling_units.length; i++)
         {
             const unit = this.traveling_units[i];
+            const fort_index:number = fort_index_lookup.get(unit.targetFort)!;
             if(unit.targetFort.get_faction() !== unit.faction)
             {
-                const fort_index:number = fort_index_lookup.get(unit.targetFort)!;
                 records[fort_index].attacking_force += unit.hp * (1 + unit.faction.unit_defense);
+            }
+            else
+            {
+                records[fort_index].defense_force_inbound += unit.hp * (1 + unit.faction.unit_defense);
             }
 
         }
@@ -3914,15 +3940,17 @@ class BattleField {
                         max_index = j;
                     }
                 }
-                if(max_points)
+                if((max_points - record.fort.faction.avg_move_value) > 100)
                 {
                     record.fort.faction.sum_move_points += max_points;
                     record.fort.faction.count_moves++;
                     record.fort.faction.avg_move_value = record.fort.faction.sum_move_points / record.fort.faction.count_moves;
-                }
-                if((max_points - record.fort.faction.avg_move_value) > 10)
-                {
-                    record.fort.auto_send_units(records[max_index].fort);
+                
+                    if(max_points > 10)
+                    {
+                        console.log(max_points, record.fort.faction.avg_move_value)
+                        record.fort.auto_send_units(records[max_index].fort);
+                    }
                 }
             }
         }
@@ -3932,9 +3960,46 @@ class BattleField {
         this.forts.forEach(fort => fort.update_state(delta_time));
         for(let i = 0; i < this.traveling_units.length; i++)
         {
-            if(!this.traveling_units[i].update_state(delta_time))
+            const unit = this.traveling_units[i];
+            if(!unit.update_state(delta_time))
             {
                 this.traveling_units.splice(i, 1);
+            }
+            for(let j = 0; j < this.traveling_units.length; j++)
+            {
+                const other = this.traveling_units[j];
+                if(other.faction !== unit.faction)
+                {
+                    if(unit.check_collision(other))
+                    {
+                        unit.attack(other);
+                        other.attack(unit);
+                        if(other.hp <= 0)
+                            this.traveling_units.splice(j, 1);
+
+                        if(unit.hp <= 0)
+                        {
+                            this.traveling_units.splice(i, 1);
+                            break;
+                        }
+                        else if(other.hp > 0)
+                        {
+                            if(other.faction === unit.faction)
+                            {
+                                if(other.faction.unit_travel_speed < Math.abs(other.y - other.targetFort.y))
+                                {
+                                    other.y -= other.height;
+                                    console.log(other.height)
+                                }
+                                else
+                                {
+                                    other.x -= other.width;
+                                }
+                            }
+                        }
+                        
+                    }
+                }
             }
         }
         this.handleAI(delta_time);
@@ -3983,7 +4048,11 @@ class Game {
             const end_touch_fort = this.currentField.find_nearest_fort(event.touchPos[0], event.touchPos[1]);
             console.log("end touch pos:", event.touchPos);
             console.log("end  fort: ", end_touch_fort);
-            if(this.start_touch_fort && end_touch_fort != this.start_touch_fort)
+            if(this.start_touch_fort === end_touch_fort)
+            {
+                this.start_touch_fort.unsend_units();
+            }
+            else
             {
                 this.start_touch_fort.send_units(end_touch_fort);
             }
@@ -4018,8 +4087,8 @@ async function main()
     let counter = 0;
     const touchScreen:boolean = isTouchSupported();
     const factions:Faction[] = [];
-    srand(607);
-    // seeds 6 are pretty good so far lol
+    srand(124);
+    // seeds 607, 197 are pretty good so far lol
     for(let i = 0; i < 135; i++)
     {
         factions.push(new Faction("Faction "+i, new RGB(random() * 256, random() * 256, random() * 256), 120));

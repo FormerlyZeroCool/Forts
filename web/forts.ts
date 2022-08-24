@@ -3529,7 +3529,7 @@ class SquareAABBCollidable {
     }
     check_collision(other:SquareAABBCollidable):boolean
     {
-        return other.x > this.x && other.x < this.x + this.width && other.y > this.y && other.y < this.y + this.height;
+        return other.x + other.width > this.x && other.x < this.x + this.width && other.y + other.height > this.y && other.y < this.y + this.height;
     }
 }
 function distance(a:SquareAABBCollidable, b:SquareAABBCollidable):number
@@ -3612,15 +3612,13 @@ class Unit extends SquareAABBCollidable implements Attackable {
         else
         {
             const delta = this.faction.unit_travel_speed * delta_time * 1/1000;
-            if((this.mid_y() - this.targetFort.mid_y()) <= -delta)
-                this.y += delta;
-            else if((this.mid_y() - this.targetFort.mid_y()) >= delta)
-                this.y -= delta;
-            else if((this.mid_x() - this.targetFort.mid_x()) <= -delta)
-                this.x += delta;
-            else if((this.mid_x() - this.targetFort.mid_x()) >= delta)
-                this.x -= delta;
-
+            const dy:number = -this.mid_y() + this.targetFort.mid_y();
+            const dx:number = -this.mid_x() + this.targetFort.mid_x();
+            const dist = Math.sqrt(dy*dy + dx*dx);
+            const norm_dy = dy / dist;
+            const norm_dx = dx / dist;
+            this.y += delta * norm_dy;
+            this.x += delta * norm_dx;
             return true;
         }
     }
@@ -3951,6 +3949,11 @@ class BattleField {
                         console.log(record.fort.faction.name, "\n", max_points,"\n", record.fort.faction.avg_move_value)
                         record.fort.auto_send_units(records[max_index].fort);
                     }
+                    if(record.fort.faction.avg_move_value > 1550)
+                    {
+                        record.fort.faction.sum_move_points = 1100 * record.fort.faction.count_moves;
+                        record.fort.faction.avg_move_value = 1100;
+                    }
                 }
             }
         }
@@ -3987,17 +3990,17 @@ class BattleField {
                     }
                     else
                     {
-                        if(other.faction === unit.faction)
+                        //if(other.faction === unit.faction)
                         {
                             if(other.faction.unit_travel_speed < Math.abs(other.y - other.targetFort.y))
                             {
-                                //unit.x -= other.width;
-                                //unit.y += unit.height;
+                                unit.x += 1;
+                                other.x -= 1;
                             }
                             else
                             {
-                                //unit.y -= other.height;
-                                //unit.x += unit.width;
+                                unit.y += 1;
+                                other.y -= 1;
                             }
                         }
                         

@@ -3124,27 +3124,33 @@ class BattleField {
                         }
                     }
                     else {
-                        //if(other.faction === unit.faction)
-                        {
-                            if (other.faction.unit_travel_speed < Math.abs(other.y - other.targetFort.y)) {
-                                unit.x += 1;
-                                other.x -= 1;
-                            }
-                            else {
-                                unit.y += 1;
-                                other.y -= 1;
-                            }
-                        }
                     }
                 }
             }
         }
         this.handleAI(delta_time);
     }
+    check_fort_collision(object) {
+        let collision = false;
+        for (let i = 0; i < this.forts.length && !collision; i++) {
+            collision = object.check_collision(this.forts[i]);
+        }
+        return collision;
+    }
     place_random_fort(factions = this.factions) {
         const x = Math.floor(random() * (this.dimensions[2] - this.fort_dim) + this.dimensions[0]);
         const y = Math.floor(random() * (this.dimensions[3] - this.fort_dim) + this.dimensions[1]);
         const owner = random() < 0.5 ? 0 : Math.floor(random() * factions.length);
+        const fort = new Fort(factions[owner], x, y, this.fort_dim, this.fort_dim);
+        while (this.check_fort_collision(fort)) {
+            if (random() > 0.5) {
+                fort.x += fort.width * 2;
+            }
+            else {
+                fort.x = Math.floor(random() * (this.dimensions[2] - this.fort_dim) + this.dimensions[0]);
+                fort.y = Math.floor(random() * (this.dimensions[3] - this.fort_dim) + this.dimensions[1]);
+            }
+        }
         return this.place_fort(factions[owner], x, y);
     }
     place_fort(faction, x, y) {

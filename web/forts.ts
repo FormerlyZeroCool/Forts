@@ -3529,7 +3529,8 @@ class SquareAABBCollidable {
     }
     check_collision(other:SquareAABBCollidable):boolean
     {
-        return other.x + other.width > this.x && other.x < this.x + this.width && other.y + other.height > this.y && other.y < this.y + this.height;
+        return this.x < other.x + other.width && other.x < this.x + this.width && 
+            this.y < other.y + other.height && other.y < this.y + this.height;
     }
 }
 function distance(a:SquareAABBCollidable, b:SquareAABBCollidable):number
@@ -3558,15 +3559,15 @@ class Faction {
     constructor(name:string, color:RGB, fort_reproduction_unit_limit:number)
     {
         this.name = name;
-        this.attack = 60;
+        this.attack = 40 * (1 + random() / 5);
         this.avg_move_value = 0;
-        this.sum_move_points = 0;
-        this.count_moves = 0;
+        this.sum_move_points = 800 * (0.5 + random());
+        this.count_moves = 1;
         this.starting_unit_hp = 100;
-        this.fort_defense = 0.15;
-        this.unit_defense = 0.05;
+        this.fort_defense = 0.15 * (0.75 + random());
+        this.unit_defense = 0.05 * (0.75 + random());
         this.color = color;
-        this.unit_reproduction_per_second = 3;
+        this.unit_reproduction_per_second = Math.floor(3 * (0.75 + random()));
         this.money_production_per_second = 10;
         this.fort_reproduction_unit_limit = fort_reproduction_unit_limit;
         this.unit_travel_speed = 100;
@@ -3630,11 +3631,47 @@ class Unit extends SquareAABBCollidable implements Attackable {
 
     lose_hp(hp:number, enemy:Attackable):void
     {
-        const rand:number = random() / 10;
-        if(hp > 0)
-            this.hp -= hp * (1+rand);
+        const rand:number = Math.random();
+        if(rand < 0.2)
+        {
+            let rand:number = Math.random();
+            rand /= 10;
+            if(hp > 0)
+                this.hp -= hp * (1+rand);
+            else
+                this.hp -= 0.01 * (1+rand);
+        }
+        else if(rand < 0.6)
+        {
+            if(hp > 0)
+                this.hp -= hp
+        }
+        else if(rand < 0.7)
+        {
+            let rand:number = Math.random();
+            rand /= 3;
+            if(hp > 0)
+                this.hp -= hp * (1+rand);
+            else
+                this.hp -= 0.01 * (1+rand);
+        }
+        else if(rand < 0.9)
+        {
+            let rand:number = Math.random();
+            rand /= 2;
+            if(hp > 0)
+                this.hp -= hp * (1+rand);
+            else
+                this.hp -= 0.01 * (1+rand);
+        }
         else
-            this.hp -= 0.01 * (1+rand);
+        {
+            let rand:number = Math.random();
+            if(hp > 0)
+                this.hp -= hp * (1+rand);
+            else
+                this.hp -= 0.01 * (1+rand);
+        }
     }
     attack(enemy:Attackable): void
     {
@@ -3999,12 +4036,22 @@ class BattleField {
     }
     check_fort_collision(object:SquareAABBCollidable):boolean
     {
-        let collision = false;
-        for(let i = 0; i < this.forts.length && !collision; i++)
+        for(let i = 0; i < this.forts.length; i++)
         {
-            collision = object.check_collision(this.forts[i]);
+            if(object.check_collision(this.forts[i]))
+                return true;
         }
-        return collision;
+        return false;
+    }
+    check_valid_fort_position(fort:Fort):boolean
+    {
+        if(this.check_fort_collision(fort))
+            return false;
+        
+        if(fort.x < 0 || fort.x + fort.width > this.dimensions[2] || fort.y < 0 || fort.y + fort.width > this.dimensions[3])
+            return false;
+        
+        return true;
     }
     place_random_fort(factions:Faction[] = this.factions):Fort
     {
@@ -4012,19 +4059,15 @@ class BattleField {
         const y = Math.floor(random() * (this.dimensions[3] - this.fort_dim) + this.dimensions[1]);
         const owner = random() < 0.5 ? 0 : Math.floor(random() * factions.length);
         const fort = new Fort(factions[owner], x, y, this.fort_dim, this.fort_dim);
-        while(this.check_fort_collision(fort))
+        if(!this.check_valid_fort_position(fort))
         {
-            if(random() > 0.5)
-            {
-                fort.x += fort.width * 2;
-            }
-            else
-            {
-                fort.x = Math.floor(random() * (this.dimensions[2] - this.fort_dim) + this.dimensions[0]);
-                fort.y = Math.floor(random() * (this.dimensions[3] - this.fort_dim) + this.dimensions[1]);
-            }
+            this.place_random_fort(factions);
         }
-        return this.place_fort(factions[owner], x, y);
+        else
+        {
+            this.forts.push(fort);
+        }
+        return fort;
     }
     place_fort(faction:Faction, x:number, y:number):Fort
     {
@@ -4076,17 +4119,27 @@ class Game {
     update_state(delta_time:number):void
     {
         this.currentField.update_state(delta_time);
-        const faction:Faction = this.currentField.forts[0].faction;
+        const faction:Faction = this.currentField.factions[1];
         let counter = 0;
+        let owned_by_player = false;
         while(counter < this.currentField.forts.length)
         {
-            if(this.currentField.forts[counter].faction !== faction)
+            if(this.currentField.forts[counter].faction === faction)
             {
                 break;
             }
             counter++;
         }
-        if(counter === this.currentField.forts.length)
+        const faction2:Faction = this.currentField.forts[0].faction;
+        let i = 0;
+        for(; i < this.currentField.forts.length; i++)
+        {
+            if(this.currentField.forts[i].faction !== faction2)
+            {
+                break;
+            }
+        }
+        if(counter === this.currentField.forts.length || i === this.currentField.forts.length)
         {
             this.currentField = new BattleField([0, 0, this.currentField.dimensions[2], this.currentField.dimensions[3]], this.factions, 10, 20);
         }

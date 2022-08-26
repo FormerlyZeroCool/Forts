@@ -2959,11 +2959,11 @@ class Fort extends SquareAABBCollidable {
         ctx.fillStyle = this.faction.color.htmlRBG();
         ctx.fillRect(this.x, this.y, this.width, this.height);
         ctx.font = `${this.font_size}px ${this.font_name}`;
-        ctx.fillStyle = "#000000";
+        if ((this.faction.color.green() + this.faction.color.red() + this.faction.color.blue()) / 3 > (100))
+            ctx.fillStyle = "#000000";
+        else
+            ctx.fillStyle = "#FFFFFF";
         ctx.fillText((this.units.length + this.leaving_units.length) + "", this.mid_x(), this.mid_y(), this.width / 2);
-        ctx.strokeStyle = "#FFFFFF";
-        ctx.lineWidth = 0.5;
-        ctx.strokeText((this.units.length + this.leaving_units.length) + "", this.mid_x(), this.mid_y(), this.width / 2);
     }
     get_faction() {
         return this.faction;
@@ -3237,7 +3237,7 @@ class Game {
         this.factions = factions;
         const width = getWidth();
         const height = getHeight();
-        this.currentField = new BattleField([0, 0, width, height], this.factions, Math.min(width, height) / 15, 10, 20);
+        this.currentField = new BattleField([0, 0, width, height], this.factions, Math.max(width, height) / 20, 10, 20);
         const touch_listener = new SingleTouchListener(canvas, true, true, false);
         touch_listener.registerCallBack("touchstart", (e) => true, (event) => {
             this.start_touch_fort = this.currentField.find_nearest_fort(event.touchPos[0], event.touchPos[1]);

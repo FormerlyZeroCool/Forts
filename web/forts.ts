@@ -4100,24 +4100,24 @@ class UpgradePanel extends SimpleGridLayoutManager {
     }
 };
 class UpgradeScreen extends SimpleGridLayoutManager {
-
-    constructor(matrixDim:number[], pixelDim:number[], x:number, y:number)
+    faction:Faction;
+    constructor(faction:Faction, pixelDim:number[], x:number, y:number)
     {
-        super(matrixDim, pixelDim, x, y);
-
+        super([4, 5], pixelDim, x, y);
+        this.faction = faction;
     }
 };
 class Game {
     currentField:BattleField;
     factions:Faction[];
     start_touch_fort:Fort;
+    upgrade_menu:UpgradeScreen;
     constructor(canvas:HTMLCanvasElement, factions:Faction[])
     {
         this.factions = factions;
         this.currentField = new BattleField([0, 0, canvas.width, canvas.height], this.factions, 10, 20);
         const touch_listener:SingleTouchListener = new SingleTouchListener(canvas, true, true, false);
         touch_listener.registerCallBack("touchstart", (e:any) => true, (event:any) => {
-            console.log("helo");
             this.start_touch_fort = this.currentField.find_nearest_fort(event.touchPos[0], event.touchPos[1]);
             console.log("start touch pos:", event.touchPos);
             console.log("start: ",this.start_touch_fort);
@@ -4135,6 +4135,7 @@ class Game {
                 this.start_touch_fort.send_units(end_touch_fort);
             }
         });
+        this.upgrade_menu = new UpgradeScreen([canvas.width / 2, canvas.height / 2], canvas.width / 4, canvas.height / 4);
     }
     is_faction_on_field(faction:Faction):boolean
     {
@@ -4153,12 +4154,20 @@ class Game {
     {
         if(this.is_game_over())
         {
-            this.currentField = new BattleField(this.currentField.dimensions, this.factions, 10, 20);
+            //do nothing for now
+            //this.currentField = new BattleField(this.currentField.dimensions, this.factions, 10, 20);
         }
         else
         {
             this.currentField.update_state(delta_time);
         }
+    }
+    draw(canvas:HTMLCanvasElement, ctx:CanvasRenderingContext2D):void
+    {
+        if(!this.is_game_over())
+            this.currentField.draw(canvas, ctx);
+        else
+            this.upgrade_menu.draw(ctx);
     }
     is_game_over():boolean
     {
@@ -4222,7 +4231,7 @@ async function main()
     {
         game.update_state(Date.now() - start);
         start = Date.now();
-        game.currentField.draw(canvas, ctx);
+        game.draw(canvas, ctx);
         requestAnimationFrame(drawLoop);
     }
     drawLoop();

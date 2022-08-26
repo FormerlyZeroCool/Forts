@@ -3212,8 +3212,9 @@ class UpgradePanel extends SimpleGridLayoutManager {
 }
 ;
 class UpgradeScreen extends SimpleGridLayoutManager {
-    constructor(matrixDim, pixelDim, x, y) {
-        super(matrixDim, pixelDim, x, y);
+    constructor(faction, pixelDim, x, y) {
+        super([4, 5], pixelDim, x, y);
+        this.faction = faction;
     }
 }
 ;
@@ -3223,7 +3224,6 @@ class Game {
         this.currentField = new BattleField([0, 0, canvas.width, canvas.height], this.factions, 10, 20);
         const touch_listener = new SingleTouchListener(canvas, true, true, false);
         touch_listener.registerCallBack("touchstart", (e) => true, (event) => {
-            console.log("helo");
             this.start_touch_fort = this.currentField.find_nearest_fort(event.touchPos[0], event.touchPos[1]);
             console.log("start touch pos:", event.touchPos);
             console.log("start: ", this.start_touch_fort);
@@ -3239,6 +3239,7 @@ class Game {
                 this.start_touch_fort.send_units(end_touch_fort);
             }
         });
+        this.upgrade_menu = new UpgradeScreen([canvas.width / 2, canvas.height / 2], canvas.width / 4, canvas.height / 4);
     }
     is_faction_on_field(faction) {
         let counter = 0;
@@ -3252,11 +3253,18 @@ class Game {
     }
     update_state(delta_time) {
         if (this.is_game_over()) {
-            this.currentField = new BattleField(this.currentField.dimensions, this.factions, 10, 20);
+            //do nothing for now
+            //this.currentField = new BattleField(this.currentField.dimensions, this.factions, 10, 20);
         }
         else {
             this.currentField.update_state(delta_time);
         }
+    }
+    draw(canvas, ctx) {
+        if (!this.is_game_over())
+            this.currentField.draw(canvas, ctx);
+        else
+            this.upgrade_menu.draw(ctx);
     }
     is_game_over() {
         let i = 0;
@@ -3308,7 +3316,7 @@ async function main() {
     const drawLoop = async () => {
         game.update_state(Date.now() - start);
         start = Date.now();
-        game.currentField.draw(canvas, ctx);
+        game.draw(canvas, ctx);
         requestAnimationFrame(drawLoop);
     };
     drawLoop();

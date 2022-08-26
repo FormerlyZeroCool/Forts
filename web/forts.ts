@@ -3544,7 +3544,9 @@ class SquareAABBCollidable {
 }
 function distance(a:SquareAABBCollidable, b:SquareAABBCollidable):number
 {
-    return Math.sqrt(Math.abs(a.mid_x() - b.mid_x()) + Math.abs(a.mid_y() - b.mid_y()));
+    const dx = a.mid_x() - b.mid_x();
+    const dy = a.mid_y() - b.mid_y();
+    return Math.sqrt(dx*dx + dy*dy);
 }
 class Faction {
     //faction stats that are static
@@ -3605,7 +3607,7 @@ class Unit extends SquareAABBCollidable implements Attackable {
     }
     update_state(delta_time:number):boolean
     {
-        if(distance(this, this.targetFort) < Math.min(this.targetFort.width, this.targetFort.height))
+        if(distance(this, this.targetFort) < Math.floor(this.targetFort.width / 2))
         {
             if(this.targetFort.faction === this.faction)
             {
@@ -3776,7 +3778,11 @@ class Fort extends SquareAABBCollidable implements Attackable {
             ctx.fillStyle = "#000000";
         else
             ctx.fillStyle = "#FFFFFF";
-        ctx.fillText((this.units.length + this.leaving_units.length) + "", this.mid_x(), this.mid_y(), this.width / 2);    
+        ctx.fillText((this.units.length + this.leaving_units.length) + "", this.mid_x(), this.mid_y(), this.width / 2);  
+        if(this.faction == this.faction.battleField.player_faction())
+        {
+            ctx.fillText("player", this.mid_x() - this.width / 4, this.mid_y() + this.font_size, this.width / 2);  
+        }  
     }
     get_faction():Faction
     {

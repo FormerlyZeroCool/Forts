@@ -2803,7 +2803,7 @@ class Faction {
         this.fort_defense = 0.15 * (0.75 + random());
         this.unit_defense = 0.05 * (0.75 + random());
         this.color = color;
-        this.unit_reproduction_per_second = Math.floor(3 * (0.75 + random()));
+        this.unit_reproduction_per_second = Math.floor(2.5 * (0.95 + random() / 10));
         this.money_production_per_second = 10;
         this.fort_reproduction_unit_limit = fort_reproduction_unit_limit;
         this.unit_travel_speed = 100;
@@ -3205,6 +3205,18 @@ class BattleField {
     }
 }
 ;
+class UpgradePanel extends SimpleGridLayoutManager {
+    constructor(matrixDim, pixelDim, x, y) {
+        super(matrixDim, pixelDim, x, y);
+    }
+}
+;
+class UpgradeScreen extends SimpleGridLayoutManager {
+    constructor(matrixDim, pixelDim, x, y) {
+        super(matrixDim, pixelDim, x, y);
+    }
+}
+;
 class Game {
     constructor(canvas, factions) {
         this.factions = factions;
@@ -3228,25 +3240,32 @@ class Game {
             }
         });
     }
-    update_state(delta_time) {
-        this.currentField.update_state(delta_time);
-        const faction = this.currentField.factions[1];
+    is_faction_on_field(faction) {
         let counter = 0;
-        let owned_by_player = false;
         while (counter < this.currentField.forts.length) {
             if (this.currentField.forts[counter].faction === faction) {
                 break;
             }
             counter++;
         }
-        const faction2 = this.currentField.forts[0].faction;
+        return counter !== this.currentField.forts.length;
+    }
+    update_state(delta_time) {
+        this.currentField.update_state(delta_time);
         let i = 0;
+        let faction = this.currentField.forts[0].faction;
+        while (faction === this.currentField.factions[0]) {
+            faction = this.currentField.forts[i].faction;
+            i++;
+        }
+        //set i to 0 if it is less than the length of the forts array
+        i = this.currentField.forts.length * +(this.currentField.forts.length === i);
         for (; i < this.currentField.forts.length; i++) {
-            if (this.currentField.forts[i].faction !== faction2) {
+            if (!(this.currentField.forts[i].faction === faction || this.currentField.forts[i].faction === this.currentField.factions[0])) {
                 break;
             }
         }
-        if (counter === this.currentField.forts.length || i === this.currentField.forts.length) {
+        if (!this.is_faction_on_field(this.currentField.player_faction()) || i === this.currentField.forts.length) {
             this.currentField = new BattleField([0, 0, this.currentField.dimensions[2], this.currentField.dimensions[3]], this.factions, 10, 20);
         }
     }
@@ -3265,7 +3284,7 @@ async function main() {
     });
     //setup rendering canvas, and view
     canvas.width = getWidth() * 0.985;
-    canvas.height = screen.height - 100;
+    canvas.height = screen.height * 0.7;
     canvas.style.cursor = "pointer";
     let counter = 0;
     const touchScreen = isTouchSupported();

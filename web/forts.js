@@ -3251,7 +3251,14 @@ class Game {
         return counter !== this.currentField.forts.length;
     }
     update_state(delta_time) {
-        this.currentField.update_state(delta_time);
+        if (this.is_game_over()) {
+            this.currentField = new BattleField(this.currentField.dimensions, this.factions, 10, 20);
+        }
+        else {
+            this.currentField.update_state(delta_time);
+        }
+    }
+    is_game_over() {
         let i = 0;
         let faction = this.currentField.forts[0].faction;
         while (faction === this.currentField.factions[0]) {
@@ -3266,8 +3273,9 @@ class Game {
             }
         }
         if (!this.is_faction_on_field(this.currentField.player_faction()) || i === this.currentField.forts.length) {
-            this.currentField = new BattleField([0, 0, this.currentField.dimensions[2], this.currentField.dimensions[3]], this.factions, 10, 20);
+            return true;
         }
+        return false;
     }
 }
 async function main() {

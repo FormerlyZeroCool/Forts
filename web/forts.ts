@@ -3469,8 +3469,8 @@ function saveBlob(blob:Blob, fileName:string){
         a.click();
     }
 }
-function getWidth() {
-    return Math.max(
+function getWidth():number {
+    return Math.min(
       document.body.scrollWidth,
       document.documentElement.scrollWidth,
       document.body.offsetWidth,
@@ -3478,6 +3478,15 @@ function getWidth() {
       document.documentElement.clientWidth
     );
   }
+  function getHeight():number {
+      return Math.min(
+        document.body.scrollHeight,
+        document.documentElement.scrollHeight,
+        document.body.offsetHeight,
+        document.documentElement.offsetHeight,
+        document.documentElement.clientHeight
+      );
+    }
 
   const max_32_bit_signed:number = Math.pow(2, 31);
   let rand_state:number = 34;
@@ -3571,7 +3580,7 @@ class Faction {
         this.unit_reproduction_per_second = Math.floor(2.5 * (0.95 + random() / 10));
         this.money_production_per_second = 10;
         this.fort_reproduction_unit_limit = fort_reproduction_unit_limit;
-        this.unit_travel_speed = 100;
+        this.unit_travel_speed = Math.max(getWidth(), getHeight()) / 10;
     }
 };
 class Unit extends SquareAABBCollidable implements Attackable {
@@ -3581,7 +3590,7 @@ class Unit extends SquareAABBCollidable implements Attackable {
     hp:number;
     constructor(faction:Faction, fort:Fort, x:number, y:number)
     {
-        super(x, y, 10, 10);
+        super(x, y, Math.ceil(faction.battleField.fort_dim / 6), Math.ceil(faction.battleField.fort_dim / 6));
         this.faction = faction;
         this.hp = faction.starting_unit_hp;
         this.currentFort = fort;
@@ -3693,6 +3702,8 @@ class Fort extends SquareAABBCollidable implements Attackable {
     leaving_units:Unit[];
     last_update_unit_reproduction:number;
     last_update_units_leaving:number;
+    font_size:number;
+    font_name:string;
 
     constructor(faction:Faction, x:number, y:number, width:number, height:number)
     {
@@ -3702,6 +3713,8 @@ class Fort extends SquareAABBCollidable implements Attackable {
         this.last_update_units_leaving = Date.now();
         this.units = [];
         this.leaving_units = [];
+        this.font_size = Math.ceil(this.faction.battleField.fort_dim / 4);
+        this.font_name = "Helvetica";
     }
     update_state(delta_time:number):void
     {
@@ -3758,8 +3771,12 @@ class Fort extends SquareAABBCollidable implements Attackable {
     {
         ctx.fillStyle = this.faction.color.htmlRBG();
         ctx.fillRect(this.x, this.y, this.width, this.height);
+        ctx.font = `${this.font_size}px ${this.font_name}`;
         ctx.fillStyle = "#000000";
         ctx.fillText((this.units.length + this.leaving_units.length) + "", this.mid_x(), this.mid_y(), this.width / 2);
+        ctx.strokeStyle = "#FFFFFF";
+        ctx.lineWidth = 0.5;
+        ctx.strokeText((this.units.length + this.leaving_units.length) + "", this.mid_x(), this.mid_y(), this.width / 2);
     }
     get_faction():Faction
     {
@@ -3870,13 +3887,13 @@ class BattleField {
     //units know what faction they belong to from there they derive their attack/defense
     //has list of factions
     //factions have offense/defense stats all owned forts take on, and attacking units take on
-    constructor(dimensions:number[], factions:Faction[], fort_count:number, no_ownership_unit_limit:number)
+    constructor(dimensions:number[], factions:Faction[], fort_dim:number, fort_count:number, no_ownership_unit_limit:number)
     {
         this.factions = [];
         this.forts = [];
         this.traveling_units = [];
         this.player_faction_index = 1;
-        this.fort_dim = 50;
+        this.fort_dim = fort_dim;
         this.factions.push(new Faction("none", new RGB(125, 125, 125), no_ownership_unit_limit));
         this.factions[0].battleField = this;
         this.dimensions = dimensions;
@@ -3898,7 +3915,7 @@ class BattleField {
         {
             const placed_fort:Fort = this.place_random_fort(factions_copy);
             const faction_index = factions_copy.indexOf(placed_fort.faction);
-            if(faction_index > 1)
+            if(faction_index > 0)
                 factions_copy.splice(faction_index, 1);
         }
     }
@@ -4092,12 +4109,19 @@ class UpgradePanel extends SimpleGridLayoutManager {
     attribute_name:string;
     faction:Faction;
     display_value:GuiLabel;
+    increase_function:(x:number) => number;
 
-
-    constructor(matrixDim:number[], pixelDim:number[], x:number, y:number)
+    constructor(faction:Faction, attribute_name:string, matrixDim:number[], pixelDim:number[], x:number, y:number)
     {
         super(matrixDim, pixelDim, x, y);
+        this.faction = faction;
+        this.attribute_name = attribute_name;
     }
+    get_value():number
+    {
+        return this.faction[this.attribute_name];
+    }
+    
 };
 class UpgradeScreen extends SimpleGridLayoutManager {
     faction:Faction;
@@ -4115,7 +4139,9 @@ class Game {
     constructor(canvas:HTMLCanvasElement, factions:Faction[])
     {
         this.factions = factions;
-        this.currentField = new BattleField([0, 0, canvas.width, canvas.height], this.factions, 10, 20);
+        const width = getWidth();
+        const height = getHeight();
+        this.currentField = new BattleField([0, 0, width, height], this.factions, Math.min(width, height) / 15, 10, 20);
         const touch_listener:SingleTouchListener = new SingleTouchListener(canvas, true, true, false);
         touch_listener.registerCallBack("touchstart", (e:any) => true, (event:any) => {
             this.start_touch_fort = this.currentField.find_nearest_fort(event.touchPos[0], event.touchPos[1]);
@@ -4135,7 +4161,7 @@ class Game {
                 this.start_touch_fort.send_units(end_touch_fort);
             }
         });
-        this.upgrade_menu = new UpgradeScreen([canvas.width / 2, canvas.height / 2], canvas.width / 4, canvas.height / 4);
+        //this.upgrade_menu = new UpgradeScreen([canvas.width / 2, canvas.height / 2], canvas.width / 4, canvas.height / 4);
     }
     is_faction_on_field(faction:Faction):boolean
     {
@@ -4155,7 +4181,7 @@ class Game {
         if(this.is_game_over())
         {
             //do nothing for now
-            //this.currentField = new BattleField(this.currentField.dimensions, this.factions, 10, 20);
+            this.currentField = new BattleField(this.currentField.dimensions, this.factions, Math.min(this.currentField.dimensions[2], this.currentField.dimensions[3]) / 15, 10, 20);
         }
         else
         {
@@ -4166,8 +4192,8 @@ class Game {
     {
         if(!this.is_game_over())
             this.currentField.draw(canvas, ctx);
-        else
-            this.upgrade_menu.draw(ctx);
+        //else
+          //  this.upgrade_menu.draw(ctx);
     }
     is_game_over():boolean
     {
@@ -4212,8 +4238,8 @@ async function main()
     });
 
     //setup rendering canvas, and view
-    canvas.width = getWidth() * 0.985;
-    canvas.height = screen.height * 0.7;
+    canvas.width = getWidth();
+    canvas.height = getHeight();
     canvas.style.cursor = "pointer";
     let counter = 0;
     const touchScreen:boolean = isTouchSupported();

@@ -2751,7 +2751,10 @@ function saveBlob(blob, fileName) {
     }
 }
 function getWidth() {
-    return Math.max(document.body.scrollWidth, document.documentElement.scrollWidth, document.body.offsetWidth, document.documentElement.offsetWidth, document.documentElement.clientWidth);
+    return Math.min(document.body.scrollWidth, document.documentElement.scrollWidth, document.body.offsetWidth, document.documentElement.offsetWidth, document.documentElement.clientWidth);
+}
+function getHeight() {
+    return Math.min(document.body.scrollHeight, document.documentElement.scrollHeight, document.body.offsetHeight, document.documentElement.offsetHeight, document.documentElement.clientHeight);
 }
 const max_32_bit_signed = Math.pow(2, 31);
 let rand_state = 34;
@@ -2806,13 +2809,13 @@ class Faction {
         this.unit_reproduction_per_second = Math.floor(2.5 * (0.95 + random() / 10));
         this.money_production_per_second = 10;
         this.fort_reproduction_unit_limit = fort_reproduction_unit_limit;
-        this.unit_travel_speed = 100;
+        this.unit_travel_speed = Math.max(getWidth(), getHeight()) / 10;
     }
 }
 ;
 class Unit extends SquareAABBCollidable {
     constructor(faction, fort, x, y) {
-        super(x, y, 10, 10);
+        super(x, y, Math.ceil(faction.battleField.fort_dim / 6), Math.ceil(faction.battleField.fort_dim / 6));
         this.faction = faction;
         this.hp = faction.starting_unit_hp;
         this.currentFort = fort;
@@ -2909,6 +2912,8 @@ class Fort extends SquareAABBCollidable {
         this.last_update_units_leaving = Date.now();
         this.units = [];
         this.leaving_units = [];
+        this.font_size = Math.ceil(this.faction.battleField.fort_dim / 4);
+        this.font_name = "Helvetica";
     }
     update_state(delta_time) {
         //reproduce new units
@@ -2953,8 +2958,12 @@ class Fort extends SquareAABBCollidable {
     draw(canvas, ctx) {
         ctx.fillStyle = this.faction.color.htmlRBG();
         ctx.fillRect(this.x, this.y, this.width, this.height);
+        ctx.font = `${this.font_size}px ${this.font_name}`;
         ctx.fillStyle = "#000000";
         ctx.fillText((this.units.length + this.leaving_units.length) + "", this.mid_x(), this.mid_y(), this.width / 2);
+        ctx.strokeStyle = "#FFFFFF";
+        ctx.lineWidth = 0.5;
+        ctx.strokeText((this.units.length + this.leaving_units.length) + "", this.mid_x(), this.mid_y(), this.width / 2);
     }
     get_faction() {
         return this.faction;
@@ -3034,12 +3043,12 @@ class BattleField {
     //units know what faction they belong to from there they derive their attack/defense
     //has list of factions
     //factions have offense/defense stats all owned forts take on, and attacking units take on
-    constructor(dimensions, factions, fort_count, no_ownership_unit_limit) {
+    constructor(dimensions, factions, fort_dim, fort_count, no_ownership_unit_limit) {
         this.factions = [];
         this.forts = [];
         this.traveling_units = [];
         this.player_faction_index = 1;
-        this.fort_dim = 50;
+        this.fort_dim = fort_dim;
         this.factions.push(new Faction("none", new RGB(125, 125, 125), no_ownership_unit_limit));
         this.factions[0].battleField = this;
         this.dimensions = dimensions;
@@ -3058,7 +3067,7 @@ class BattleField {
         for (let i = 0; i < fort_count; i++) {
             const placed_fort = this.place_random_fort(factions_copy);
             const faction_index = factions_copy.indexOf(placed_fort.faction);
-            if (faction_index > 1)
+            if (faction_index > 0)
                 factions_copy.splice(faction_index, 1);
         }
     }
@@ -3206,8 +3215,13 @@ class BattleField {
 }
 ;
 class UpgradePanel extends SimpleGridLayoutManager {
-    constructor(matrixDim, pixelDim, x, y) {
+    constructor(faction, attribute_name, matrixDim, pixelDim, x, y) {
         super(matrixDim, pixelDim, x, y);
+        this.faction = faction;
+        this.attribute_name = attribute_name;
+    }
+    get_value() {
+        return this.faction[this.attribute_name];
     }
 }
 ;
@@ -3221,7 +3235,9 @@ class UpgradeScreen extends SimpleGridLayoutManager {
 class Game {
     constructor(canvas, factions) {
         this.factions = factions;
-        this.currentField = new BattleField([0, 0, canvas.width, canvas.height], this.factions, 10, 20);
+        const width = getWidth();
+        const height = getHeight();
+        this.currentField = new BattleField([0, 0, width, height], this.factions, Math.min(width, height) / 15, 10, 20);
         const touch_listener = new SingleTouchListener(canvas, true, true, false);
         touch_listener.registerCallBack("touchstart", (e) => true, (event) => {
             this.start_touch_fort = this.currentField.find_nearest_fort(event.touchPos[0], event.touchPos[1]);
@@ -3239,7 +3255,7 @@ class Game {
                 this.start_touch_fort.send_units(end_touch_fort);
             }
         });
-        this.upgrade_menu = new UpgradeScreen([canvas.width / 2, canvas.height / 2], canvas.width / 4, canvas.height / 4);
+        //this.upgrade_menu = new UpgradeScreen([canvas.width / 2, canvas.height / 2], canvas.width / 4, canvas.height / 4);
     }
     is_faction_on_field(faction) {
         let counter = 0;
@@ -3254,7 +3270,7 @@ class Game {
     update_state(delta_time) {
         if (this.is_game_over()) {
             //do nothing for now
-            //this.currentField = new BattleField(this.currentField.dimensions, this.factions, 10, 20);
+            this.currentField = new BattleField(this.currentField.dimensions, this.factions, Math.min(this.currentField.dimensions[2], this.currentField.dimensions[3]) / 15, 10, 20);
         }
         else {
             this.currentField.update_state(delta_time);
@@ -3263,8 +3279,8 @@ class Game {
     draw(canvas, ctx) {
         if (!this.is_game_over())
             this.currentField.draw(canvas, ctx);
-        else
-            this.upgrade_menu.draw(ctx);
+        //else
+        //  this.upgrade_menu.draw(ctx);
     }
     is_game_over() {
         let i = 0;
@@ -3299,8 +3315,8 @@ async function main() {
         //e.preventDefault();
     });
     //setup rendering canvas, and view
-    canvas.width = getWidth() * 0.985;
-    canvas.height = screen.height * 0.7;
+    canvas.width = getWidth();
+    canvas.height = getHeight();
     canvas.style.cursor = "pointer";
     let counter = 0;
     const touchScreen = isTouchSupported();

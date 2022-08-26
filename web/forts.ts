@@ -4148,13 +4148,14 @@ class Game {
         const width = canvas.width;
         const height = canvas.height;
         this.currentField = new BattleField([0, 0, width, height], this.factions, Math.max(width, height) / 20, 10, 20);
+        const is_player = (e:any) => this.currentField.find_nearest_fort(e.touchPos[0], e.touchPos[1]).faction === this.currentField.player_faction()
         const touch_listener:SingleTouchListener = new SingleTouchListener(canvas, true, true, false);
-        touch_listener.registerCallBack("touchstart", (e:any) => true, (event:any) => {
+        touch_listener.registerCallBack("touchstart", is_player, (event:any) => {
             this.start_touch_fort = this.currentField.find_nearest_fort(event.touchPos[0], event.touchPos[1]);
             console.log("start touch pos:", event.touchPos);
             console.log("start: ",this.start_touch_fort);
         });
-        touch_listener.registerCallBack("touchend", (e:any) => true, (event:any) => {
+        touch_listener.registerCallBack("touchend", (e:any) => this.start_touch_fort.faction === this.currentField.player_faction(), (event:any) => {
             const end_touch_fort = this.currentField.find_nearest_fort(event.touchPos[0], event.touchPos[1]);
             console.log("end touch pos:", event.touchPos);
             console.log("end  fort: ", end_touch_fort);
@@ -4167,7 +4168,7 @@ class Game {
                 this.start_touch_fort.send_units(end_touch_fort);
             }
         });
-        //this.upgrade_menu = new UpgradeScreen([canvas.width / 2, canvas.height / 2], canvas.width / 4, canvas.height / 4);
+        this.upgrade_menu = new UpgradeScreen(this.factions[0], [canvas.width / 2, canvas.height / 2], canvas.width / 4, canvas.height / 4);
     }
     is_faction_on_field(faction:Faction):boolean
     {

@@ -2828,7 +2828,7 @@ class Unit extends SquareAABBCollidable {
         ctx.strokeRect(Math.floor(this.x), Math.floor(this.y), this.width, this.height);
     }
     update_state(delta_time) {
-        if (distance(this, this.targetFort) < 5) {
+        if (distance(this, this.targetFort) < Math.min(this.targetFort.width, this.targetFort.height)) {
             if (this.targetFort.faction === this.faction) {
                 this.targetFort.units.push(this);
                 this.currentFort = this.targetFort;
@@ -3235,8 +3235,8 @@ class UpgradeScreen extends SimpleGridLayoutManager {
 class Game {
     constructor(canvas, factions) {
         this.factions = factions;
-        const width = getWidth();
-        const height = getHeight();
+        const width = canvas.width;
+        const height = canvas.height;
         this.currentField = new BattleField([0, 0, width, height], this.factions, Math.max(width, height) / 20, 10, 20);
         const touch_listener = new SingleTouchListener(canvas, true, true, false);
         touch_listener.registerCallBack("touchstart", (e) => true, (event) => {
@@ -3270,7 +3270,7 @@ class Game {
     update_state(delta_time) {
         if (this.is_game_over()) {
             //do nothing for now
-            this.currentField = new BattleField(this.currentField.dimensions, this.factions, Math.min(this.currentField.dimensions[2], this.currentField.dimensions[3]) / 15, 10, 20);
+            this.currentField = new BattleField(this.currentField.dimensions, this.factions, this.currentField.fort_dim, 10, 20);
         }
         else {
             this.currentField.update_state(delta_time);

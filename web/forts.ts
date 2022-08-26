@@ -3605,7 +3605,7 @@ class Unit extends SquareAABBCollidable implements Attackable {
     }
     update_state(delta_time:number):boolean
     {
-        if(distance(this, this.targetFort) < 5)
+        if(distance(this, this.targetFort) < Math.min(this.targetFort.width, this.targetFort.height))
         {
             if(this.targetFort.faction === this.faction)
             {
@@ -4139,8 +4139,8 @@ class Game {
     constructor(canvas:HTMLCanvasElement, factions:Faction[])
     {
         this.factions = factions;
-        const width = getWidth();
-        const height = getHeight();
+        const width = canvas.width;
+        const height = canvas.height;
         this.currentField = new BattleField([0, 0, width, height], this.factions, Math.max(width, height) / 20, 10, 20);
         const touch_listener:SingleTouchListener = new SingleTouchListener(canvas, true, true, false);
         touch_listener.registerCallBack("touchstart", (e:any) => true, (event:any) => {
@@ -4181,7 +4181,7 @@ class Game {
         if(this.is_game_over())
         {
             //do nothing for now
-            this.currentField = new BattleField(this.currentField.dimensions, this.factions, Math.min(this.currentField.dimensions[2], this.currentField.dimensions[3]) / 15, 10, 20);
+            this.currentField = new BattleField(this.currentField.dimensions, this.factions, this.currentField.fort_dim, 10, 20);
         }
         else
         {

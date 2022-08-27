@@ -4132,14 +4132,14 @@ class UpgradePanel extends SimpleGridLayoutManager {
 
     constructor(next:(x:number) => number, faction:Faction, layout:UpgradeScreen, attribute_name:string, short_name:string, pixelDim:number[], x:number, y:number)
     {
-        super([1, 2], pixelDim, x, y);
+        super([1, 20], pixelDim, x, y);
         this.increase_function = next;
         this.faction = faction;
         this.attribute_name = attribute_name;
         this.display_value = new GuiButton(() => {
             this.increment_attribute();
             layout.game.new_game();
-        }, this.get_value() + "", pixelDim[0], pixelDim[1] / 2);
+        }, this.get_value() + "", pixelDim[0], 32);
         this.display_name = new GuiTextBox(false, pixelDim[0], this.display_value, 16, 32, GuiTextBox.bottom | GuiTextBox.center);
         this.display_name.setText(short_name);
         this.display_name.refresh();

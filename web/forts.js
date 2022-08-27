@@ -3275,7 +3275,7 @@ class UpgradeScreen extends SimpleGridLayoutManager {
         const attack = new UpgradePanel(diff_log, this, "attack", "Attack", [panel_width, panel_height], 0, 0);
         this.addElement(attack);
         {
-            const upgrades = new UpgradePanel((x) => diff_log(x, 14), this, "unit_reproduction_per_second", "repro per second", [panel_width, panel_height], 0, 0);
+            const upgrades = new UpgradePanel((x) => diff_log(x, 14), this, "unit_reproduction_per_second", "units per sec", [panel_width, panel_height], 0, 0);
             this.addElement(upgrades);
         }
         {

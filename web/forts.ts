@@ -4293,7 +4293,6 @@ class Game {
     }
     find_non_player_or_null_owned_fort_faction():Faction|null
     {
-
         let i = 1;
         let faction:Faction = this.currentField.forts[0].faction;
         while(i < this.currentField.forts.length && (faction === this.factions[0] || faction === this.factions[1]))
@@ -4301,7 +4300,7 @@ class Game {
             faction = this.currentField.forts[i].faction;
             i++;
         }
-        if(faction && faction !== this.factions[0] && faction !== this.factions[1])
+        if(i < this.currentField.forts.length)
             return faction;
         else
             return null;
@@ -4310,8 +4309,6 @@ class Game {
     {
         if((!this.is_faction_on_field(this.currentField.player_faction()) || !this.find_non_player_or_null_owned_fort_faction()))
         {
-            console.log("hi")
-            //this.upgrade_menu.activate();
             return true;
         }
         return false;

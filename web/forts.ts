@@ -4125,39 +4125,39 @@ class BattleField {
 };
 class UpgradePanel extends SimpleGridLayoutManager {
     attribute_name:string;
-    faction:Faction;
     display_name:GuiTextBox;
     display_value:GuiButton;
+    frame:UpgradeScreen;
     increase_function:(x:number) => number;
 
-    constructor(next:(x:number) => number, faction:Faction, layout:UpgradeScreen, attribute_name:string, short_name:string, pixelDim:number[], x:number, y:number)
+    constructor(next:(x:number) => number, frame:UpgradeScreen, attribute_name:string, short_name:string, pixelDim:number[], x:number, y:number)
     {
         super([1, 20], pixelDim, x, y);
+        this.frame = frame;
         this.increase_function = next;
-        this.faction = faction;
         this.attribute_name = attribute_name;
         this.display_value = new GuiButton(() => {
             this.increment_attribute();
-            layout.game.new_game();
+            this.frame.game.new_game();
         }, this.get_value() + "", pixelDim[0], 32);
-        this.display_name = new GuiTextBox(false, pixelDim[0], this.display_value, 16, 32, GuiTextBox.bottom | GuiTextBox.center);
+        this.display_name = new GuiTextBox(false, pixelDim[0], this.display_value, 16, 32, GuiTextBox.bottom | GuiTextBox.hcenter);
         this.display_name.setText(short_name);
         this.display_name.refresh();
         this.display_value.refresh();
-        this.activate();
-        this.createHandlers(layout.game.keyboard_handler, layout.game.touch_listener);
+        this.createHandlers(this.frame.game.keyboard_handler, this.frame.game.touch_listener);
         this.addElement(this.display_name);
         this.addElement(this.display_value);
+        this.setHeight(this.display_name.height() + this.display_value.height() + 10);
     }
     increment_attribute():void
     {
-        this.faction[this.attribute_name] += this.increase_function(this.faction[this.attribute_name]);
+        this.frame.faction[this.attribute_name] += this.increase_function(this.frame.faction[this.attribute_name]);
         this.display_value.text = this.get_value() + "";
         this.display_value.refresh();
     }
     get_value():number
     {
-        return Math.round(this.faction[this.attribute_name] * 1000) / 1000;
+        return Math.round(this.frame.faction[this.attribute_name] * 1000) / 1000;
     }
     
 };
@@ -4170,28 +4170,29 @@ class UpgradeScreen extends SimpleGridLayoutManager {
         this.faction = faction;
         this.game = game;
         let diff_log = (x:number, offset:number = 0) => Math.log(x + 1 + offset) - Math.log(x + offset);
-        const attack = new UpgradePanel(diff_log, faction, this, "attack", "Attack", [Math.floor(pixelDim[0] / 2), Math.floor(pixelDim[1] / 4)], 0, 0);
+        const panel_height = pixelDim[1] / 5;
+        const attack = new UpgradePanel(diff_log, this, "attack", "Attack", [Math.floor(pixelDim[0] / 2), panel_height], 0, 0);
         this.addElement(attack);
     {
-        const upgrades = new UpgradePanel((x:number) => diff_log(x, 14), faction, this, "unit_reproduction_per_second", "unit repro/second", [Math.floor(pixelDim[0] / 2), Math.floor(pixelDim[1] / 4)], 0, 0);
+        const upgrades = new UpgradePanel((x:number) => diff_log(x, 14), this, "unit_reproduction_per_second", "repro/second", [Math.floor(pixelDim[0] / 2), panel_height], 0, 0);
         this.addElement(upgrades);
     }
     {
-        const upgrades = new UpgradePanel((x:number) => diff_log(x, 100), faction, this, "unit_defense", "unit defense", [Math.floor(pixelDim[0] / 2), Math.floor(pixelDim[1] / 4)], 0, 0);
-        this.addElement(upgrades);
-    }
-
-    {
-        const upgrades = new UpgradePanel((x:number) => diff_log(x, 95), faction, this, "fort_defense", "fort defense", [Math.floor(pixelDim[0] / 2), Math.floor(pixelDim[1] / 4)], 0, 0);
+        const upgrades = new UpgradePanel((x:number) => diff_log(x, 100), this, "unit_defense", "unit defense", [Math.floor(pixelDim[0] / 2), panel_height], 0, 0);
         this.addElement(upgrades);
     }
 
     {
-        const upgrades = new UpgradePanel((x:number) => diff_log(x, Math.floor(1-this.faction.starting_unit_hp)), faction, this, "starting_unit_hp", "unit hp", [Math.floor(pixelDim[0] / 2), Math.floor(pixelDim[1] / 4)], 0, 0);
+        const upgrades = new UpgradePanel((x:number) => diff_log(x, 95), this, "fort_defense", "fort defense", [Math.floor(pixelDim[0] / 2), panel_height], 0, 0);
+        this.addElement(upgrades);
+    }
+
+    {
+        const upgrades = new UpgradePanel((x:number) => diff_log(x, Math.floor(1-this.faction.starting_unit_hp)), this, "starting_unit_hp", "unit hp", [Math.floor(pixelDim[0] / 2), panel_height], 0, 0);
         this.addElement(upgrades);
     }
     {
-        const upgrades = new UpgradePanel((x:number) => diff_log(x, Math.floor(1-this.faction.unit_travel_speed)), faction, this, "unit_travel_speed", "unit speed", [Math.floor(pixelDim[0] / 2), Math.floor(pixelDim[1] / 4)], 0, 0);
+        const upgrades = new UpgradePanel((x:number) => pixelDim[1] / 100, this, "unit_travel_speed", "unit speed", [Math.floor(pixelDim[0] / 2), panel_height], 0, 0);
         this.addElement(upgrades);
     }
         this.refresh();
@@ -4269,7 +4270,7 @@ class Game {
     {
         let i = 0;
         let faction:Faction = this.currentField.forts[0].faction;
-        while(faction === this.currentField.factions[0])
+        while(i < this.factions.length && faction === this.factions[0])
         {
             faction = this.currentField.forts[i].faction;
             i++;
@@ -4278,7 +4279,7 @@ class Game {
         i = this.currentField.forts.length * +(this.currentField.forts.length === i);
         for(; i < this.currentField.forts.length; i++)
         {
-            if(!(this.currentField.forts[i].faction === faction || this.currentField.forts[i].faction === this.currentField.factions[0]))
+            if(!(this.currentField.forts[i].faction === faction || this.currentField.forts[i].faction === this.factions[0]))
             {
                 break;
             }

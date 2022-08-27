@@ -3263,7 +3263,7 @@ class UpgradeScreen extends SimpleGridLayoutManager {
         super([4, 20], pixelDim, x, y);
         this.faction = faction;
         this.game = game;
-        let diff_log = (x) => Math.log(x + 1) - Math.log(x);
+        let diff_log = (x) => Math.log(x + 15) - Math.log(x + 14);
         const attack = new UpgradePanel(diff_log, faction, this, "attack", "Attack", [Math.floor(pixelDim[0] / 2), Math.floor(pixelDim[1] / 4)], 0, 0);
         this.addElement(attack);
         {

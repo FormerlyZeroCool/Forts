@@ -4157,7 +4157,7 @@ class UpgradePanel extends SimpleGridLayoutManager {
     }
     get_value():number
     {
-        return Math.round(this.faction[this.attribute_name] * 100) / 100;
+        return Math.round(this.faction[this.attribute_name] * 1000) / 1000;
     }
     
 };
@@ -4169,29 +4169,29 @@ class UpgradeScreen extends SimpleGridLayoutManager {
         super([4, 20], pixelDim, x, y);
         this.faction = faction;
         this.game = game;
-        let diff_log = (x:number) => Math.log(x + 15) - Math.log(x + 14);
+        let diff_log = (x:number, offset:number = 0) => Math.log(x + 1 + offset) - Math.log(x + offset);
         const attack = new UpgradePanel(diff_log, faction, this, "attack", "Attack", [Math.floor(pixelDim[0] / 2), Math.floor(pixelDim[1] / 4)], 0, 0);
         this.addElement(attack);
     {
-        const upgrades = new UpgradePanel(diff_log, faction, this, "unit_reproduction_per_second", "unit repro/second", [Math.floor(pixelDim[0] / 2), Math.floor(pixelDim[1] / 4)], 0, 0);
+        const upgrades = new UpgradePanel((x:number) => diff_log(x, 14), faction, this, "unit_reproduction_per_second", "unit repro/second", [Math.floor(pixelDim[0] / 2), Math.floor(pixelDim[1] / 4)], 0, 0);
         this.addElement(upgrades);
     }
     {
-        const upgrades = new UpgradePanel(diff_log, faction, this, "unit_defense", "unit defense", [Math.floor(pixelDim[0] / 2), Math.floor(pixelDim[1] / 4)], 0, 0);
-        this.addElement(upgrades);
-    }
-
-    {
-        const upgrades = new UpgradePanel(diff_log, faction, this, "fort_defense", "fort defense", [Math.floor(pixelDim[0] / 2), Math.floor(pixelDim[1] / 4)], 0, 0);
+        const upgrades = new UpgradePanel((x:number) => diff_log(x, 100), faction, this, "unit_defense", "unit defense", [Math.floor(pixelDim[0] / 2), Math.floor(pixelDim[1] / 4)], 0, 0);
         this.addElement(upgrades);
     }
 
     {
-        const upgrades = new UpgradePanel(diff_log, faction, this, "starting_unit_hp", "unit hp", [Math.floor(pixelDim[0] / 2), Math.floor(pixelDim[1] / 4)], 0, 0);
+        const upgrades = new UpgradePanel((x:number) => diff_log(x, 95), faction, this, "fort_defense", "fort defense", [Math.floor(pixelDim[0] / 2), Math.floor(pixelDim[1] / 4)], 0, 0);
+        this.addElement(upgrades);
+    }
+
+    {
+        const upgrades = new UpgradePanel((x:number) => diff_log(x, Math.floor(1-this.faction.starting_unit_hp)), faction, this, "starting_unit_hp", "unit hp", [Math.floor(pixelDim[0] / 2), Math.floor(pixelDim[1] / 4)], 0, 0);
         this.addElement(upgrades);
     }
     {
-        const upgrades = new UpgradePanel(diff_log, faction, this, "unit_travel_speed", "unit speed", [Math.floor(pixelDim[0] / 2), Math.floor(pixelDim[1] / 4)], 0, 0);
+        const upgrades = new UpgradePanel((x:number) => diff_log(x, Math.floor(1-this.faction.unit_travel_speed)), faction, this, "unit_travel_speed", "unit speed", [Math.floor(pixelDim[0] / 2), Math.floor(pixelDim[1] / 4)], 0, 0);
         this.addElement(upgrades);
     }
         this.refresh();

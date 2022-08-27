@@ -4166,7 +4166,7 @@ class UpgradeScreen extends SimpleGridLayoutManager {
     game:Game;
     constructor(faction:Faction, game:Game, pixelDim:number[], x:number, y:number)
     {
-        super([4, 4], pixelDim, x, y);
+        super([4, 20], pixelDim, x, y);
         this.faction = faction;
         this.game = game;
         let diff_log = (x:number) => Math.log(x + 1) - Math.log(x);

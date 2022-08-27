@@ -467,9 +467,9 @@ class SimpleGridLayoutManager {
             keyboardHandler.registerCallBack("keyup", (e) => this.active(), (e) => { e.keyboardHandler = keyboardHandler; this.elements.forEach(el => el.handleKeyBoardEvents("keyup", e)); });
         }
         if (touchHandler) {
-            touchHandler.registerCallBack("touchstart", (e) => this.active(), (e) => this.handleTouchEvents("touchstart", e));
-            touchHandler.registerCallBack("touchmove", (e) => this.active(), (e) => this.handleTouchEvents("touchmove", e));
-            touchHandler.registerCallBack("touchend", (e) => this.active(), (e) => this.handleTouchEvents("touchend", e));
+            touchHandler.registerCallBack("touchstart", (e) => this.active(), (e) => { this.handleTouchEvents("touchstart", e); });
+            touchHandler.registerCallBack("touchmove", (e) => this.active(), (e) => { this.handleTouchEvents("touchmove", e); });
+            touchHandler.registerCallBack("touchend", (e) => this.active(), (e) => { this.handleTouchEvents("touchend", e); });
         }
     }
     isLayoutManager() {
@@ -482,10 +482,11 @@ class SimpleGridLayoutManager {
         }
     }
     handleTouchEvents(type, e) {
-        if (!this.elementTouched && e.touchPos[0] >= 0 && e.touchPos[0] < this.width() &&
-            e.touchPos[1] >= 0 && e.touchPos[1] < this.height()) {
+        if (!this.elementTouched && e.touchPos[0] >= this.x && e.touchPos[0] < this.x + this.width() &&
+            e.touchPos[1] >= this.y && e.touchPos[1] < this.y + this.height()) {
             let record = null;
             let index = 0;
+            e.translateEvent(e, -this.x, -this.y);
             let runningNumber = 0;
             this.elementsPositions.forEach(el => {
                 el.element.deactivate();
@@ -497,13 +498,14 @@ class SimpleGridLayoutManager {
                 }
                 runningNumber++;
             });
+            e.translateEvent(e, this.x, this.y);
             if (record) {
                 e.preventDefault();
+                e.translateEvent(e, -record.x - this.x, -record.y - this.y);
                 if (type !== "touchmove")
                     record.element.activate();
-                e.translateEvent(e, -record.x, -record.y);
                 record.element.handleTouchEvents(type, e);
-                e.translateEvent(e, record.x, record.y);
+                e.translateEvent(e, record.x + this.x, record.y + this.y);
                 record.element.refresh();
                 this.elementTouched = record;
                 if (e.repaint) {
@@ -539,6 +541,9 @@ class SimpleGridLayoutManager {
     }
     activate() {
         this.focused = true;
+        this.elements.forEach(el => {
+            el.activate();
+        });
     }
     isCellFree(x, y) {
         const pixelX = x * this.pixelDim[0] / this.matrixDim[0];
@@ -583,6 +588,10 @@ class SimpleGridLayoutManager {
             const x = counter.second * this.columnWidth();
             const y = counter.first * this.rowHeight();
             counter.second += elementWidth;
+            if (element.isLayoutManager()) {
+                element.x = x + this.x;
+                element.y = y + this.y;
+            }
             const record = new RowRecord(x + xPos + offsetX, y + yPos + offsetY, element.width(), element.height(), element);
             this.elementsPositions.push(record);
         }
@@ -2800,11 +2809,11 @@ function distance(a, b) {
 class Faction {
     constructor(name, color, fort_reproduction_unit_limit) {
         this.name = name;
-        this.attack = 40 * (1 + random() / 5);
+        this.attack = 4 * (1 + random() / 5);
         this.avg_move_value = 0;
         this.sum_move_points = 800 * (0.5 + random());
         this.count_moves = 1;
-        this.starting_unit_hp = 100;
+        this.starting_unit_hp = 10;
         this.fort_defense = 0.15 * (0.75 + random());
         this.unit_defense = 0.05 * (0.75 + random());
         this.color = color;
@@ -3048,7 +3057,8 @@ class BattleField {
     //units know what faction they belong to from there they derive their attack/defense
     //has list of factions
     //factions have offense/defense stats all owned forts take on, and attacking units take on
-    constructor(dimensions, factions, fort_dim, fort_count, no_ownership_unit_limit) {
+    constructor(game, dimensions, factions, fort_dim, fort_count, no_ownership_unit_limit) {
+        this.game = game;
         this.factions = [];
         this.forts = [];
         this.traveling_units = [];
@@ -3220,20 +3230,63 @@ class BattleField {
 }
 ;
 class UpgradePanel extends SimpleGridLayoutManager {
-    constructor(faction, attribute_name, matrixDim, pixelDim, x, y) {
-        super(matrixDim, pixelDim, x, y);
+    constructor(next, faction, layout, attribute_name, short_name, pixelDim, x, y) {
+        super([1, 2], pixelDim, x, y);
+        this.increase_function = next;
         this.faction = faction;
         this.attribute_name = attribute_name;
+        this.display_value = new GuiButton(() => {
+            this.increment_attribute();
+            layout.game.new_game();
+        }, this.get_value() + "", pixelDim[0], pixelDim[1] / 2);
+        this.display_name = new GuiTextBox(false, pixelDim[0], this.display_value, 16, 32, GuiTextBox.bottom | GuiTextBox.center);
+        this.display_name.setText(short_name);
+        this.display_name.refresh();
+        this.display_value.refresh();
+        this.activate();
+        this.createHandlers(layout.game.keyboard_handler, layout.game.touch_listener);
+        this.addElement(this.display_name);
+        this.addElement(this.display_value);
+    }
+    increment_attribute() {
+        this.faction[this.attribute_name] += this.increase_function(this.faction[this.attribute_name]);
+        this.display_value.text = this.get_value() + "";
+        this.display_value.refresh();
     }
     get_value() {
-        return this.faction[this.attribute_name];
+        return Math.round(this.faction[this.attribute_name] * 100) / 100;
     }
 }
 ;
 class UpgradeScreen extends SimpleGridLayoutManager {
-    constructor(faction, pixelDim, x, y) {
-        super([4, 5], pixelDim, x, y);
+    constructor(faction, game, pixelDim, x, y) {
+        super([4, 4], pixelDim, x, y);
         this.faction = faction;
+        this.game = game;
+        let diff_log = (x) => Math.log(x + 1) - Math.log(x);
+        const attack = new UpgradePanel(diff_log, faction, this, "attack", "Attack", [Math.floor(pixelDim[0] / 2), Math.floor(pixelDim[1] / 4)], 0, 0);
+        this.addElement(attack);
+        {
+            const upgrades = new UpgradePanel(diff_log, faction, this, "unit_reproduction_per_second", "unit repro/second", [Math.floor(pixelDim[0] / 2), Math.floor(pixelDim[1] / 4)], 0, 0);
+            this.addElement(upgrades);
+        }
+        {
+            const upgrades = new UpgradePanel(diff_log, faction, this, "unit_defense", "unit defense", [Math.floor(pixelDim[0] / 2), Math.floor(pixelDim[1] / 4)], 0, 0);
+            this.addElement(upgrades);
+        }
+        {
+            const upgrades = new UpgradePanel(diff_log, faction, this, "fort_defense", "fort defense", [Math.floor(pixelDim[0] / 2), Math.floor(pixelDim[1] / 4)], 0, 0);
+            this.addElement(upgrades);
+        }
+        {
+            const upgrades = new UpgradePanel(diff_log, faction, this, "starting_unit_hp", "unit hp", [Math.floor(pixelDim[0] / 2), Math.floor(pixelDim[1] / 4)], 0, 0);
+            this.addElement(upgrades);
+        }
+        {
+            const upgrades = new UpgradePanel(diff_log, faction, this, "unit_travel_speed", "unit speed", [Math.floor(pixelDim[0] / 2), Math.floor(pixelDim[1] / 4)], 0, 0);
+            this.addElement(upgrades);
+        }
+        this.refresh();
     }
 }
 ;
@@ -3242,15 +3295,16 @@ class Game {
         this.factions = factions;
         const width = canvas.width;
         const height = canvas.height;
-        this.currentField = new BattleField([0, 0, width, height], this.factions, Math.max(width, height) / 20, 10, 20);
+        this.currentField = new BattleField(this, [0, 0, width, height], this.factions, Math.max(width, height) / 20, 10, 20);
         const is_player = (e) => this.currentField.find_nearest_fort(e.touchPos[0], e.touchPos[1]).faction === this.currentField.player_faction();
-        const touch_listener = new SingleTouchListener(canvas, true, true, false);
-        touch_listener.registerCallBack("touchstart", is_player, (event) => {
+        this.keyboard_handler = new KeyboardHandler();
+        this.touch_listener = new SingleTouchListener(canvas, true, true, false);
+        this.touch_listener.registerCallBack("touchstart", is_player, (event) => {
             this.start_touch_fort = this.currentField.find_nearest_fort(event.touchPos[0], event.touchPos[1]);
             console.log("start touch pos:", event.touchPos);
             console.log("start: ", this.start_touch_fort);
         });
-        touch_listener.registerCallBack("touchend", (e) => this.start_touch_fort.faction === this.currentField.player_faction(), (event) => {
+        this.touch_listener.registerCallBack("touchend", (e) => this.start_touch_fort && this.start_touch_fort.faction === this.currentField.player_faction(), (event) => {
             const end_touch_fort = this.currentField.find_nearest_fort(event.touchPos[0], event.touchPos[1]);
             console.log("end touch pos:", event.touchPos);
             console.log("end  fort: ", end_touch_fort);
@@ -3261,7 +3315,8 @@ class Game {
                 this.start_touch_fort.send_units(end_touch_fort);
             }
         });
-        this.upgrade_menu = new UpgradeScreen(this.factions[0], [canvas.width / 2, canvas.height / 2], canvas.width / 4, canvas.height / 4);
+        this.upgrade_menu = new UpgradeScreen(this.currentField.player_faction(), this, [canvas.width / 2, canvas.height / 2], canvas.width / 4, canvas.height / 4);
+        this.upgrade_menu.refresh();
     }
     is_faction_on_field(faction) {
         let counter = 0;
@@ -3275,8 +3330,6 @@ class Game {
     }
     update_state(delta_time) {
         if (this.is_game_over()) {
-            //do nothing for now
-            this.currentField = new BattleField(this.currentField.dimensions, this.factions, this.currentField.fort_dim, 10, 20);
         }
         else {
             this.currentField.update_state(delta_time);
@@ -3285,8 +3338,8 @@ class Game {
     draw(canvas, ctx) {
         if (!this.is_game_over())
             this.currentField.draw(canvas, ctx);
-        //else
-        //  this.upgrade_menu.draw(ctx);
+        else
+            this.upgrade_menu.draw(ctx);
     }
     is_game_over() {
         let i = 0;
@@ -3303,9 +3356,14 @@ class Game {
             }
         }
         if (!this.is_faction_on_field(this.currentField.player_faction()) || i === this.currentField.forts.length) {
+            this.upgrade_menu.activate();
             return true;
         }
         return false;
+    }
+    new_game() {
+        this.upgrade_menu.deactivate();
+        this.currentField = new BattleField(this, this.currentField.dimensions, this.factions, this.currentField.fort_dim, 10, 20);
     }
 }
 async function main() {

@@ -1271,7 +1271,7 @@ class GuiTextBox {
         this.cursor = 0;
         this.flags = flags;
         this.focused = false;
-        this.promptText = "Enter text here:";
+        this.promptText = "";
         this.submissionButton = submit;
         this.selectedColor = selectedColor;
         this.unSelectedColor = unSelectedColor;
@@ -3239,7 +3239,7 @@ class UpgradePanel extends SimpleGridLayoutManager {
         this.display_value = new GuiButton(() => {
             this.increment_attribute();
             this.frame.game.new_game();
-        }, this.get_value() + "", pixelDim[0], fontSize * 2);
+        }, this.get_value() + "", pixelDim[0], fontSize * 2, fontSize);
         this.display_name = new GuiTextBox(false, pixelDim[0], this.display_value, fontSize, fontSize * 2, GuiTextBox.default);
         this.display_name.setText(short_name);
         this.display_name.refresh();
@@ -3266,35 +3266,37 @@ class UpgradePanel extends SimpleGridLayoutManager {
 ;
 class UpgradeScreen extends SimpleGridLayoutManager {
     constructor(faction, game, pixelDim, x, y) {
-        super([4, 20], pixelDim, x, y);
+        super([6, 20], pixelDim, x, y);
         this.faction = faction;
         this.game = game;
         let diff_log = (x, offset = 0) => Math.log(x + 1 + offset) - Math.log(x + offset);
         const panel_height = pixelDim[1] / 5;
-        const attack = new UpgradePanel(diff_log, this, "attack", "Attack", [Math.floor(pixelDim[0] / 2), panel_height], 0, 0);
+        const panel_width = Math.floor(pixelDim[0] / 3);
+        const attack = new UpgradePanel(diff_log, this, "attack", "Attack", [panel_width, panel_height], 0, 0);
         this.addElement(attack);
         {
-            const upgrades = new UpgradePanel((x) => diff_log(x, 14), this, "unit_reproduction_per_second", "repro/second", [Math.floor(pixelDim[0] / 2), panel_height], 0, 0);
+            const upgrades = new UpgradePanel((x) => diff_log(x, 14), this, "unit_reproduction_per_second", "repro per second", [panel_width, panel_height], 0, 0);
             this.addElement(upgrades);
         }
         {
-            const upgrades = new UpgradePanel((x) => diff_log(x, 100), this, "unit_defense", "unit defense", [Math.floor(pixelDim[0] / 2), panel_height], 0, 0);
+            const upgrades = new UpgradePanel((x) => diff_log(x, 100), this, "unit_defense", "unit defense", [panel_width, panel_height], 0, 0);
             this.addElement(upgrades);
         }
         {
-            const upgrades = new UpgradePanel((x) => diff_log(x, 95), this, "fort_defense", "fort defense", [Math.floor(pixelDim[0] / 2), panel_height], 0, 0);
+            const upgrades = new UpgradePanel((x) => diff_log(x, 95), this, "fort_defense", "fort defense", [panel_width, panel_height], 0, 0);
             this.addElement(upgrades);
         }
         {
-            const upgrades = new UpgradePanel((x) => diff_log(x, Math.floor(1 - this.faction.starting_unit_hp)), this, "starting_unit_hp", "unit hp", [Math.floor(pixelDim[0] / 2), panel_height], 0, 0);
+            const upgrades = new UpgradePanel((x) => diff_log(x, Math.floor(1 - this.faction.starting_unit_hp)), this, "starting_unit_hp", "unit hp", [panel_width, panel_height], 0, 0);
             this.addElement(upgrades);
         }
         {
-            const upgrades = new UpgradePanel((x) => pixelDim[1] / 100, this, "unit_travel_speed", "unit speed", [Math.floor(pixelDim[0] / 2), panel_height], 0, 0);
+            const upgrades = new UpgradePanel((x) => pixelDim[1] / 100, this, "unit_travel_speed", "unit speed", [panel_width, panel_height], 0, 0);
             this.addElement(upgrades);
         }
         {
-            const upgrades = new UpgradePanel((x) => pixelDim[1] / 100, this, "null", "Skip", [Math.floor(pixelDim[0] / 2), panel_height], 0, 0);
+            this.addElement(new GuiSpacer([panel_width, panel_height]));
+            const upgrades = new UpgradePanel((x) => pixelDim[1] / 100, this, "null", "Skip", [panel_width, panel_height], 0, 0);
             upgrades.increase_function = null;
             this.addElement(upgrades);
         }
@@ -3327,7 +3329,7 @@ class Game {
                 this.start_touch_fort.send_units(end_touch_fort);
             }
         });
-        this.upgrade_menu = new UpgradeScreen(this.currentField.player_faction(), this, [canvas.width / 2, canvas.height / 2], canvas.width / 4, canvas.height / 4);
+        this.upgrade_menu = new UpgradeScreen(this.currentField.player_faction(), this, [canvas.width / 2 + 100, canvas.height / 2], canvas.width / 4 - 50, canvas.height / 4);
         this.upgrade_menu.refresh();
     }
     is_faction_on_field(faction) {

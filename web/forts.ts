@@ -3640,8 +3640,15 @@ class Unit extends SquareAABBCollidable implements Attackable {
             const dist = Math.sqrt(dy*dy + dx*dx);
             const norm_dy = dy / dist;
             const norm_dx = dx / dist;
-            this.y += delta * norm_dy;
-            this.x += delta * norm_dx;
+            let ndy = delta * norm_dy;
+            let ndx = delta * norm_dx;
+            if(ndy*ndy > dy*dy || ndx*ndx > dx*dx)
+            {
+                ndx = dx;
+                ndy = dy;
+            }
+            this.y += ndy;
+            this.x += ndx;
             return true;
         }
     }
@@ -4280,23 +4287,40 @@ class Game {
         else
             this.upgrade_menu.draw(ctx);
     }
+    find_non_player_or_null_owned_fort_faction():Faction|null
+    {
+
+        let i = 0;
+        let faction:Faction = this.currentField.forts[0].faction;
+        while(i < this.currentField.forts.length && (faction === this.factions[0] || faction === this.factions[1]))
+        {
+            i++;
+            faction = this.currentField.forts[i].faction;
+        }
+        if(i < this.currentField.forts.length)
+            return faction;
+        else
+            return null;
+    }
     is_game_over():boolean
     {
         let i = 0;
-        let faction:Faction = this.currentField.forts[0].faction;
-        while(i < this.factions.length && faction === this.factions[0])
+        const maybe_faction:Faction|null = this.find_non_player_or_null_owned_fort_faction();
+        if(maybe_faction)
         {
-            faction = this.currentField.forts[i].faction;
-            i++;
-        }
-        //set i to 0 if it is less than the length of the forts array
-        i = this.currentField.forts.length * +(this.currentField.forts.length === i);
-        for(; i < this.currentField.forts.length; i++)
-        {
-            if(!(this.currentField.forts[i].faction === faction || this.currentField.forts[i].faction === this.factions[0]))
+            const faction = maybe_faction!;
+            //set i to 0 if it is less than the length of the forts array
+            for(; i < this.currentField.forts.length; i++)
             {
-                break;
+                if(this.currentField.forts[i].faction !== faction)
+                {
+                    break;
+                }
             }
+        }
+        else
+        {
+            i = this.currentField.forts.length;//game over no forts other than player, or null
         }
         if(!this.is_faction_on_field(this.currentField.player_faction()) || i === this.currentField.forts.length)
         {

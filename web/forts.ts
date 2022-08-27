@@ -4128,19 +4128,20 @@ class UpgradePanel extends SimpleGridLayoutManager {
     display_name:GuiTextBox;
     display_value:GuiButton;
     frame:UpgradeScreen;
-    increase_function:(x:number) => number;
+    increase_function:null | ((x:number) => number);
 
     constructor(next:(x:number) => number, frame:UpgradeScreen, attribute_name:string, short_name:string, pixelDim:number[], x:number, y:number)
     {
         super([1, 20], pixelDim, x, y);
         this.frame = frame;
+        const fontSize = isTouchSupported() ? 20:16;
         this.increase_function = next;
         this.attribute_name = attribute_name;
         this.display_value = new GuiButton(() => {
             this.increment_attribute();
             this.frame.game.new_game();
-        }, this.get_value() + "", pixelDim[0], 32);
-        this.display_name = new GuiTextBox(false, pixelDim[0], this.display_value, 16, 32, GuiTextBox.bottom | GuiTextBox.hcenter);
+        }, this.get_value() + "", pixelDim[0], fontSize * 2);
+        this.display_name = new GuiTextBox(false, pixelDim[0], this.display_value, fontSize, fontSize * 2, GuiTextBox.default);
         this.display_name.setText(short_name);
         this.display_name.refresh();
         this.display_value.refresh();
@@ -4151,13 +4152,19 @@ class UpgradePanel extends SimpleGridLayoutManager {
     }
     increment_attribute():void
     {
-        this.frame.faction[this.attribute_name] += this.increase_function(this.frame.faction[this.attribute_name]);
-        this.display_value.text = this.get_value() + "";
-        this.display_value.refresh();
+        if(this.increase_function)
+        {
+            this.frame.faction[this.attribute_name] += this.increase_function(this.frame.faction[this.attribute_name]);
+            this.display_value.text = this.get_value() + "";
+            this.display_value.refresh();
+        }
     }
-    get_value():number
+    get_value():number|string
     {
-        return Math.round(this.frame.faction[this.attribute_name] * 1000) / 1000;
+        if(this.frame.faction[this.attribute_name] !== undefined)
+            return Math.round(this.frame.faction[this.attribute_name] * 1000) / 1000;
+        else
+            return "No Upgrades";
     }
     
 };
@@ -4193,6 +4200,11 @@ class UpgradeScreen extends SimpleGridLayoutManager {
     }
     {
         const upgrades = new UpgradePanel((x:number) => pixelDim[1] / 100, this, "unit_travel_speed", "unit speed", [Math.floor(pixelDim[0] / 2), panel_height], 0, 0);
+        this.addElement(upgrades);
+    }
+    {
+        const upgrades = new UpgradePanel((x:number) => pixelDim[1] / 100, this, "null", "Skip", [Math.floor(pixelDim[0] / 2), panel_height], 0, 0);
+        upgrades.increase_function = null;
         this.addElement(upgrades);
     }
         this.refresh();

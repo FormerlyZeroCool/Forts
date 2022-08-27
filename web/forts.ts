@@ -4274,6 +4274,7 @@ class Game {
     {
         if(this.is_game_over())
         {
+            this.upgrade_menu.activate();
         }
         else
         {
@@ -4285,46 +4286,32 @@ class Game {
         if(!this.is_game_over())
             this.currentField.draw(canvas, ctx);
         else
+        {
+            this.upgrade_menu.activate();
             this.upgrade_menu.draw(ctx);
+        }
     }
     find_non_player_or_null_owned_fort_faction():Faction|null
     {
 
-        let i = 0;
+        let i = 1;
         let faction:Faction = this.currentField.forts[0].faction;
         while(i < this.currentField.forts.length && (faction === this.factions[0] || faction === this.factions[1]))
         {
-            i++;
             faction = this.currentField.forts[i].faction;
+            i++;
         }
-        if(i < this.currentField.forts.length)
+        if(faction && faction !== this.factions[0] && faction !== this.factions[1])
             return faction;
         else
             return null;
     }
     is_game_over():boolean
     {
-        let i = 0;
-        const maybe_faction:Faction|null = this.find_non_player_or_null_owned_fort_faction();
-        if(maybe_faction)
+        if((!this.is_faction_on_field(this.currentField.player_faction()) || !this.find_non_player_or_null_owned_fort_faction()))
         {
-            const faction = maybe_faction!;
-            //set i to 0 if it is less than the length of the forts array
-            for(; i < this.currentField.forts.length; i++)
-            {
-                if(this.currentField.forts[i].faction !== faction)
-                {
-                    break;
-                }
-            }
-        }
-        else
-        {
-            i = this.currentField.forts.length;//game over no forts other than player, or null
-        }
-        if(!this.is_faction_on_field(this.currentField.player_faction()) || i === this.currentField.forts.length)
-        {
-            this.upgrade_menu.activate();
+            console.log("hi")
+            //this.upgrade_menu.activate();
             return true;
         }
         return false;

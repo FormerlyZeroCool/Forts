@@ -4291,26 +4291,74 @@ class Game {
             this.upgrade_menu.draw(ctx);
         }
     }
-    find_non_player_or_null_owned_fort_faction():Faction|null
+    hp_by_faction():number[]
     {
-        let i = 1;
-        let faction:Faction = this.currentField.forts[0].faction;
-        while(i < this.currentField.forts.length && (faction === this.factions[0] || faction === this.factions[1]))
+        let unit_counts:number[] = [];
+        const faction_map = new Map<Faction, number>();
+        for(let i = 0; i < this.factions.length; i++)
         {
-            faction = this.currentField.forts[i].faction;
-            i++;
+            unit_counts.push(0);
+            faction_map.set(this.factions[i], i);
         }
-        if(i < this.currentField.forts.length)
-            return faction;
-        else
-            return null;
+        for(let i = 0; i < this.currentField.forts.length; i++)
+        {
+            const fort = this.currentField.forts[i];
+            const faction_index = faction_map.get(fort.faction)!;
+            for(let j = 0; j < fort.units.length; j++)
+            {
+                const unit = fort.units[j];
+                unit_counts[faction_index] += unit.hp;
+            }
+            for(let j = 0; j < fort.leaving_units.length; j++)
+            {
+                const unit = fort.leaving_units[j];
+                unit_counts[faction_index] += unit.hp;
+            }
+        }
+        for(let i = 0; i < this.currentField.traveling_units.length; i++)
+        {
+            const unit = this.currentField.traveling_units[i];
+            const faction_index = faction_map.get(unit.faction)!;
+            unit_counts[faction_index] += unit.hp;
+        }
+        return unit_counts;
+    }
+    player_fort_count():number
+    {
+        let count = 0;
+        for(let i = 0; i < this.currentField.forts.length; i++)
+        {
+            count += +(this.currentField.forts[i].faction === this.currentField.player_faction());
+            //count += +(this.currentField.forts[i].faction === this.currentField.factions[0]);
+        }
+        return count;
+    }
+    null_fort_count():number
+    {
+        let count = 0;
+        for(let i = 0; i < this.currentField.forts.length; i++)
+        {
+            count += +(this.currentField.forts[i].faction === this.currentField.factions[0]);
+            //count += +(this.currentField.forts[i].faction === this.currentField.factions[0]);
+        }
+        return count;
     }
     is_game_over():boolean
     {
-        if((!this.is_faction_on_field(this.currentField.player_faction()) || !this.find_non_player_or_null_owned_fort_faction()))
+        const data = this.hp_by_faction();
+        let sum = 0;
+        for(let i = 2; i < data.length; i++)
+        {
+            sum += data[i];
+        }
+        const pfc = this.player_fort_count();
+        const nfc = this.null_fort_count();
+        if(pfc === 0 && data[this.currentField.player_faction_index] === 0)
         {
             return true;
         }
+        if(pfc + nfc === this.currentField.forts.length && sum === 0)
+            return true;
         return false;
     }
     new_game():void

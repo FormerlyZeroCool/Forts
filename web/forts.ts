@@ -3592,7 +3592,7 @@ class Faction {
         this.unit_reproduction_per_second = Math.floor(2.5 * (0.95 + random() / 10));
         this.money_production_per_second = 10;
         this.fort_reproduction_unit_limit = fort_reproduction_unit_limit;
-        this.unit_travel_speed = Math.max(getWidth(), getHeight()) / 10;
+        this.unit_travel_speed = Math.max(getWidth(), getHeight()) / 7.5;
     }
 };
 class Unit extends SquareAABBCollidable implements Attackable {
@@ -3748,7 +3748,7 @@ class Fort extends SquareAABBCollidable implements Attackable {
             this.last_update_unit_reproduction = Date.now();
         }
         //send out leaving units
-        if(Date.now() - this.last_update_units_leaving > 250)
+        if(Date.now() - this.last_update_units_leaving > 100)
         {
             const limit:number = Math.min(3, this.leaving_units.length);
             for(let i = 0; i < limit; i++)

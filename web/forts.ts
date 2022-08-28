@@ -3522,6 +3522,13 @@ interface Attackable {
     lose_hp(hp:number, enemy:Attackable):void;
     get_faction():Faction;
 };
+interface SpatialObject {
+
+    get_normalized_vector(other:SpatialObject):number[];
+    dim():number[];
+    mid_x():number;
+    mid_y():number;
+};
 class SquareAABBCollidable {
     x:number;
     y:number;
@@ -3534,6 +3541,20 @@ class SquareAABBCollidable {
         this.width = width;
         this.height = height;
     }
+    check_collision(other:SquareAABBCollidable):boolean
+    {
+        return this.x < other.x + other.width && other.x < this.x + this.width && 
+            this.y < other.y + other.height && other.y < this.y + this.height;
+    }
+    get_normalized_vector(other:SpatialObject):number[]
+    {
+        const dy:number = -this.mid_y() + other.mid_y();
+        const dx:number = -this.mid_x() + other.mid_x();
+        const dist = Math.sqrt(dy*dy + dx*dx);
+        const norm_dy = dy / dist;
+        const norm_dx = dx / dist;
+        return [dx / dist, dy / dist];
+    }
     dim():number[]
     {
         return [this.x, this.y, this.width, this.height];
@@ -3545,11 +3566,6 @@ class SquareAABBCollidable {
     mid_y():number
     {
         return this.y + this.height / 2;
-    }
-    check_collision(other:SquareAABBCollidable):boolean
-    {
-        return this.x < other.x + other.width && other.x < this.x + this.width && 
-            this.y < other.y + other.height && other.y < this.y + this.height;
     }
 }
 function distance(a:SquareAABBCollidable, b:SquareAABBCollidable):number
@@ -3652,7 +3668,6 @@ class Unit extends SquareAABBCollidable implements Attackable {
             return true;
         }
     }
-
     get_faction():Faction
     {
         return this.faction;
@@ -3753,10 +3768,11 @@ class Fort extends SquareAABBCollidable implements Attackable {
             const limit:number = Math.min(3, this.leaving_units.length);
             for(let i = 0; i < limit; i++)
             {
-                const unit = this.leaving_units.pop();
-                unit!.x += i * unit!.width;
-                unit!.y += i * unit!.height;
-                this.faction.battleField.traveling_units.push(unit!);
+                const unit = this.leaving_units.pop()!;
+                const unit_vector = unit.get_normalized_vector(unit.targetFort);
+                unit.x += i * unit.width * (unit_vector[0] < 0 ? 1:-1);
+                unit.y += i * unit.height * (unit_vector[1] < 0 ? 1:-1);
+                this.faction.battleField.traveling_units.push(unit);
             }
             this.last_update_units_leaving = Date.now();
         }
@@ -4353,7 +4369,8 @@ class Game {
         }
         const pfc = this.player_fort_count();
         const nfc = this.null_fort_count();
-        if(pfc === 0 && data[this.currentField.player_faction_index] === 0)
+        console.log(pfc, nfc, data[this.currentField.player_faction_index])
+        if(pfc === 0)
         {
             return true;
         }
@@ -4402,12 +4419,17 @@ async function main()
     let start = Date.now();
     const drawLoop = async () => 
     {
-        game.update_state(Date.now() - start);
-        start = Date.now();
         game.draw(canvas, ctx);
         requestAnimationFrame(drawLoop);
     }
     drawLoop();
+    while(true)
+    {
+
+        game.update_state(Date.now() - start);
+        start = Date.now();
+        await sleep(1)
+    }
 
 }
 main();

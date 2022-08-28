@@ -2780,12 +2780,25 @@ function random() {
     return (rand_state) * 1 / max_32_bit_signed;
 }
 ;
+;
 class SquareAABBCollidable {
     constructor(x, y, width, height) {
         this.x = x;
         this.y = y;
         this.width = width;
         this.height = height;
+    }
+    check_collision(other) {
+        return this.x < other.x + other.width && other.x < this.x + this.width &&
+            this.y < other.y + other.height && other.y < this.y + this.height;
+    }
+    get_normalized_vector(other) {
+        const dy = -this.mid_y() + other.mid_y();
+        const dx = -this.mid_x() + other.mid_x();
+        const dist = Math.sqrt(dy * dy + dx * dx);
+        const norm_dy = dy / dist;
+        const norm_dx = dx / dist;
+        return [dx / dist, dy / dist];
     }
     dim() {
         return [this.x, this.y, this.width, this.height];
@@ -2795,10 +2808,6 @@ class SquareAABBCollidable {
     }
     mid_y() {
         return this.y + this.height / 2;
-    }
-    check_collision(other) {
-        return this.x < other.x + other.width && other.x < this.x + this.width &&
-            this.y < other.y + other.height && other.y < this.y + this.height;
     }
 }
 function distance(a, b) {
@@ -2946,8 +2955,9 @@ class Fort extends SquareAABBCollidable {
             const limit = Math.min(3, this.leaving_units.length);
             for (let i = 0; i < limit; i++) {
                 const unit = this.leaving_units.pop();
-                unit.x += i * unit.width;
-                unit.y += i * unit.height;
+                const unit_vector = unit.get_normalized_vector(unit.targetFort);
+                unit.x += i * unit.width * (unit_vector[0] < 0 ? 1 : -1);
+                unit.y += i * unit.height * (unit_vector[1] < 0 ? 1 : -1);
                 this.faction.battleField.traveling_units.push(unit);
             }
             this.last_update_units_leaving = Date.now();
@@ -3414,7 +3424,8 @@ class Game {
         }
         const pfc = this.player_fort_count();
         const nfc = this.null_fort_count();
-        if (pfc === 0 && data[this.currentField.player_faction_index] === 0) {
+        console.log(pfc, nfc, data[this.currentField.player_faction_index]);
+        if (pfc === 0) {
             return true;
         }
         if (pfc + nfc === this.currentField.forts.length && sum === 0)
@@ -3454,11 +3465,14 @@ async function main() {
     const game = new Game(canvas, factions);
     let start = Date.now();
     const drawLoop = async () => {
-        game.update_state(Date.now() - start);
-        start = Date.now();
         game.draw(canvas, ctx);
         requestAnimationFrame(drawLoop);
     };
     drawLoop();
+    while (true) {
+        game.update_state(Date.now() - start);
+        start = Date.now();
+        await sleep(1);
+    }
 }
 main();

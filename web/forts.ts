@@ -3979,7 +3979,6 @@ class BattleField {
         this.ctx.clearRect(0, 0, canvas.width, canvas.height);
         this.forts.forEach(fort => fort.draw(this.canvas, this.ctx));
         this.traveling_units.forEach(unit => unit.draw(this.canvas, this.ctx));
-        ctx.clearRect(this.dimensions[0], this.dimensions[1], this.dimensions[2], this.dimensions[3])
         ctx.drawImage(this.canvas, this.dimensions[0], this.dimensions[1]);
     }
     handleAI(delta_time:number):void
@@ -4222,6 +4221,7 @@ class UpgradeScreen extends SimpleGridLayoutManager {
         const attack = new UpgradePanel(diff_log, this, "attack", "Attack", [panel_width, panel_height], 0, 0);
         this.addElement(attack);
         this.upgrade_panels.push(attack);
+        this.setHeight(attack.height() * 3);
     {
         const upgrades = new UpgradePanel((x:number) => diff_log(x, 14), this, "unit_reproduction_per_second", "units per sec", [panel_width, panel_height], 0, 0);
         this.addElement(upgrades);
@@ -4268,6 +4268,7 @@ class Game {
     touch_listener:SingleTouchListener;
     keyboard_handler:KeyboardHandler;
     game_over:boolean;
+    board_cache:HTMLCanvasElement
     constructor(canvas:HTMLCanvasElement, factions:Faction[])
     {
         this.factions = factions;
@@ -4347,11 +4348,13 @@ class Game {
     }
     draw(canvas:HTMLCanvasElement, ctx:CanvasRenderingContext2D):void
     {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        this.currentField.draw(canvas, ctx);
-        if(this.game_over)
+        ctx.clearRect(this.currentField.dimensions[0], this.currentField.dimensions[1], this.currentField.dimensions[2], this.currentField.dimensions[3]);
+        if(!this.game_over)
+            this.currentField.draw(canvas, ctx);
+        else 
         {
             this.upgrade_menu.activate();
+            ctx.drawImage(this.currentField.canvas, this.currentField.dimensions[0], this.currentField.dimensions[1]);
             this.upgrade_menu.draw(ctx);
         }
     }

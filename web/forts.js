@@ -2938,7 +2938,7 @@ class Fort extends SquareAABBCollidable {
         this.last_update_units_leaving = Date.now();
         this.units = [];
         this.leaving_units = [];
-        this.font_size = Math.ceil(this.faction.battleField.fort_dim / 4);
+        this.font_size = Math.ceil(this.faction.battleField.fort_dim / 3);
         this.font_name = "Helvetica";
     }
     update_state(delta_time) {
@@ -2986,14 +2986,16 @@ class Fort extends SquareAABBCollidable {
         ctx.fillStyle = this.faction.color.htmlRBG();
         ctx.fillRect(this.x, this.y, this.width, this.height);
         ctx.font = `${this.font_size}px ${this.font_name}`;
-        if ((this.faction.color.green() + this.faction.color.red() + this.faction.color.blue()) / 3 > (100))
-            ctx.fillStyle = "#000000";
-        else
-            ctx.fillStyle = "#FFFFFF";
-        ctx.fillText((this.units.length + this.leaving_units.length) + "", this.mid_x(), this.mid_y(), this.width / 2);
+        ctx.strokeStyle = "#FFFFFF";
+        ctx.fillStyle = "#000000";
+        ctx.lineWidth = 3;
+        ctx.strokeText((this.units.length + this.leaving_units.length) + "", this.mid_x() - this.width / 4, this.mid_y(), this.width / 2);
+        ctx.fillText((this.units.length + this.leaving_units.length) + "", this.mid_x() - this.width / 4, this.mid_y(), this.width / 2);
         if (this.faction == this.faction.battleField.player_faction()) {
+            ctx.strokeText("player", this.mid_x() - this.width / 4, this.mid_y() + this.font_size, this.width / 2);
             ctx.fillText("player", this.mid_x() - this.width / 4, this.mid_y() + this.font_size, this.width / 2);
         }
+        ctx.lineWidth = 1;
     }
     get_faction() {
         return this.faction;

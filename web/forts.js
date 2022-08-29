@@ -3076,22 +3076,19 @@ class BattleField {
     //units know what faction they belong to from there they derive their attack/defense
     //has list of factions
     //factions have offense/defense stats all owned forts take on, and attacking units take on
-    constructor(game, dimensions, factions, fort_dim, fort_count, no_ownership_unit_limit) {
+    constructor(game, dimensions, factions, fort_dim, fort_count) {
         this.game = game;
         this.factions = [];
         this.forts = [];
         this.traveling_units = [];
         this.player_faction_index = 1;
         this.fort_dim = fort_dim;
-        this.factions.push(new Faction("none", new RGB(125, 125, 125), no_ownership_unit_limit));
-        this.factions[0].battleField = this;
         this.dimensions = dimensions;
         this.canvas = document.createElement("canvas");
         this.canvas.width = dimensions[2];
         this.canvas.height = dimensions[3];
         this.ctx = this.canvas.getContext("2d");
         const factions_copy = [];
-        factions_copy.push(this.factions[0]);
         for (let i = 0; i < factions.length; i++) {
             const to_copy = factions[i];
             to_copy.battleField = this;
@@ -3219,17 +3216,20 @@ class BattleField {
         return true;
     }
     place_random_fort(factions = this.factions) {
-        const x = Math.floor(random() * (this.dimensions[2] - this.fort_dim) + this.dimensions[0]);
-        const y = Math.floor(random() * (this.dimensions[3] - this.fort_dim) + this.dimensions[1]);
-        const owner = random() < 0.5 ? 0 : Math.floor(random() * factions.length);
-        const fort = new Fort(factions[owner], x, y, this.fort_dim, this.fort_dim);
-        if (!this.check_valid_fort_position(fort)) {
-            this.place_random_fort(factions);
+        if (factions.length) {
+            const x = Math.floor(random() * (this.dimensions[2] - this.fort_dim) + this.dimensions[0]);
+            const y = Math.floor(random() * (this.dimensions[3] - this.fort_dim) + this.dimensions[1]);
+            const owner = random() < 0.5 ? 0 : Math.floor(random() * factions.length);
+            const fort = new Fort(factions[owner], x, y, this.fort_dim, this.fort_dim);
+            if (!this.check_valid_fort_position(fort)) {
+                this.place_random_fort(factions);
+            }
+            else {
+                this.forts.push(fort);
+            }
+            return fort;
         }
-        else {
-            this.forts.push(fort);
-        }
-        return fort;
+        throw "Error no factions instantiated";
     }
     place_fort(faction, x, y) {
         this.forts.push(new Fort(faction, x, y, this.fort_dim, this.fort_dim));
@@ -3327,7 +3327,16 @@ class Game {
         this.factions = factions;
         const width = canvas.width;
         const height = canvas.height;
-        this.currentField = new BattleField(this, [0, 0, width, height], this.factions, Math.max(width, height) / 20, 10, 20);
+        this.factions.push(new Faction("none", new RGB(125, 125, 125), 25));
+        this.game_over = true;
+        srand(6);
+        // seeds 607, 197 are pretty good so far lol
+        for (let i = 0; i < 10; i++) {
+            factions.push(new Faction("Faction " + i, new RGB(random() * 256, random() * 256, random() * 256), 120));
+        }
+        srand(Math.random() * max_32_bit_signed);
+        this.currentField = new BattleField(this, [0, 0, width, height], this.factions, Math.max(width, height) / 20, 10);
+        //this.factions[0].battleField = this.currentField;
         const is_player = (e) => this.currentField.find_nearest_fort(e.touchPos[0], e.touchPos[1]).faction === this.currentField.player_faction();
         this.keyboard_handler = new KeyboardHandler();
         this.touch_listener = new SingleTouchListener(canvas, true, true, false);
@@ -3361,15 +3370,16 @@ class Game {
         return counter !== this.currentField.forts.length;
     }
     update_state(delta_time) {
-        if (this.is_game_over()) {
+        if (this.game_over) {
             this.upgrade_menu.activate();
         }
         else {
             this.currentField.update_state(delta_time);
+            this.game_over = this.is_game_over();
         }
     }
     draw(canvas, ctx) {
-        if (!this.is_game_over())
+        if (!this.game_over)
             this.currentField.draw(canvas, ctx);
         else {
             this.upgrade_menu.activate();
@@ -3426,7 +3436,7 @@ class Game {
         }
         const pfc = this.player_fort_count();
         const nfc = this.null_fort_count();
-        if (pfc === 0) {
+        if (pfc === 0 && data[this.currentField.player_faction_index] === 0) {
             return true;
         }
         if (pfc + nfc === this.currentField.forts.length && sum === 0)
@@ -3435,6 +3445,7 @@ class Game {
     }
     new_game() {
         this.upgrade_menu.deactivate();
+        this.game_over = false;
         this.currentField = new BattleField(this, this.currentField.dimensions, this.factions, this.currentField.fort_dim, 10, 20);
     }
 }
@@ -3457,12 +3468,6 @@ async function main() {
     let counter = 0;
     const touchScreen = isTouchSupported();
     const factions = [];
-    srand(6);
-    // seeds 607, 197 are pretty good so far lol
-    for (let i = 0; i < 10; i++) {
-        factions.push(new Faction("Faction " + i, new RGB(random() * 256, random() * 256, random() * 256), 120));
-    }
-    srand(Math.random() * max_32_bit_signed);
     const game = new Game(canvas, factions);
     let start = Date.now();
     const drawLoop = async () => {

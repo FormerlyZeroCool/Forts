@@ -3352,6 +3352,7 @@ class Game {
         for (let i = 0; i < 10; i++) {
             factions.push(new Faction("Faction " + i, new RGB(random() * 256, random() * 256, random() * 256), 120));
         }
+        this.factions[1].unit_reproduction_per_second += 0.3;
         srand(Math.random() * max_32_bit_signed);
         this.currentField = new BattleField(this, [0, 0, width, height], this.factions, Math.max(width, height) / 20, 10);
         //this.factions[0].battleField = this.currentField;
@@ -3397,6 +3398,7 @@ class Game {
         if (this.game_over) {
             if (!this.upgrade_menu.active()) {
                 this.upgrade_menu.activate();
+                this.upgrade_ai_factions();
                 this.upgrade_ai_factions();
             }
         }

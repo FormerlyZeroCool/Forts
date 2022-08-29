@@ -4223,29 +4223,29 @@ class UpgradeScreen extends SimpleGridLayoutManager {
         this.upgrade_panels.push(attack);
         this.setHeight(attack.height() * 3);
     {
-        const upgrades = new UpgradePanel((x:number) => diff_log(x, 14), this, "unit_reproduction_per_second", "units per sec", [panel_width, panel_height], 0, 0);
+        const upgrades = new UpgradePanel((x:number) => diff_log(x, 14), this, "unit_reproduction_per_second", "Unit Prod", [panel_width, panel_height], 0, 0);
         this.addElement(upgrades);
         this.upgrade_panels.push(upgrades);
     }
     {
-        const upgrades = new UpgradePanel((x:number) => diff_log(x, 100), this, "unit_defense", "unit defense", [panel_width, panel_height], 0, 0);
-        this.addElement(upgrades);
-        this.upgrade_panels.push(upgrades);
-    }
-
-    {
-        const upgrades = new UpgradePanel((x:number) => diff_log(x, 95), this, "fort_defense", "fort defense", [panel_width, panel_height], 0, 0);
+        const upgrades = new UpgradePanel((x:number) => diff_log(x, 100), this, "unit_defense", "Unit Defense", [panel_width, panel_height], 0, 0);
         this.addElement(upgrades);
         this.upgrade_panels.push(upgrades);
     }
 
     {
-        const upgrades = new UpgradePanel((x:number) => diff_log(x, 0), this, "starting_unit_hp", "unit hp", [panel_width, panel_height], 0, 0);
+        const upgrades = new UpgradePanel((x:number) => diff_log(x, 95), this, "fort_defense", "Fort Defense", [panel_width, panel_height], 0, 0);
+        this.addElement(upgrades);
+        this.upgrade_panels.push(upgrades);
+    }
+
+    {
+        const upgrades = new UpgradePanel((x:number) => diff_log(x, 0), this, "starting_unit_hp", "Unit HP", [panel_width, panel_height], 0, 0);
         this.addElement(upgrades);
         this.upgrade_panels.push(upgrades);
     }
     {
-        const upgrades = new UpgradePanel((x:number) => pixelDim[1] / 100, this, "unit_travel_speed", "unit speed", [panel_width, panel_height], 0, 0);
+        const upgrades = new UpgradePanel((x:number) => pixelDim[1] / 100, this, "unit_travel_speed", "Unit Speed", [panel_width, panel_height], 0, 0);
         this.addElement(upgrades);
         this.upgrade_panels.push(upgrades);
     }

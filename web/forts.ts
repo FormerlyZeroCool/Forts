@@ -3599,7 +3599,7 @@ class Faction {
         this.name = name;
         this.attack = 4 * (1 + random() / 5);
         this.avg_move_value = 0;
-        this.sum_move_points = 800 * (0.5 + random());
+        this.sum_move_points = 400 * (0.5 + random());
         this.count_moves = 1;
         this.starting_unit_hp = 10;
         this.fort_defense = 0.15 * (0.75 + random());
@@ -4034,7 +4034,7 @@ class BattleField {
                         max_index = j;
                     }
                 }
-                if((max_points - record.fort.faction.avg_move_value) > 100)
+                if((max_points - record.fort.faction.avg_move_value) > 25)
                 {
                     record.fort.faction.sum_move_points += max_points;
                     record.fort.faction.count_moves++;
@@ -4046,8 +4046,8 @@ class BattleField {
                     }
                     if(record.fort.faction.avg_move_value > 1550)
                     {
-                        record.fort.faction.sum_move_points = 1100 * record.fort.faction.count_moves;
-                        record.fort.faction.avg_move_value = 1100;
+                        record.fort.faction.sum_move_points = 650 * record.fort.faction.count_moves;
+                        record.fort.faction.avg_move_value = 650;
                     }
                 }
             }
@@ -4222,7 +4222,7 @@ class UpgradeScreen extends SimpleGridLayoutManager {
     }
 
     {
-        const upgrades = new UpgradePanel((x:number) => diff_log(x, Math.floor(1-this.faction.starting_unit_hp)), this, "starting_unit_hp", "unit hp", [panel_width, panel_height], 0, 0);
+        const upgrades = new UpgradePanel((x:number) => diff_log(x, 0), this, "starting_unit_hp", "unit hp", [panel_width, panel_height], 0, 0);
         this.addElement(upgrades);
     }
     {

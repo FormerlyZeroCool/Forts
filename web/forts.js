@@ -3249,7 +3249,7 @@ class UpgradePanel extends SimpleGridLayoutManager {
     constructor(next, frame, attribute_name, short_name, pixelDim, x, y) {
         super([1, 20], pixelDim, x, y);
         this.frame = frame;
-        const fontSize = isTouchSupported() ? 20 : 16;
+        const fontSize = isTouchSupported() ? 27 : 20;
         this.increase_function = next;
         this.attribute_name = attribute_name;
         this.display_value = new GuiButton(() => {
@@ -3286,7 +3286,7 @@ class UpgradeScreen extends SimpleGridLayoutManager {
         this.faction = faction;
         this.game = game;
         let diff_log = (x, offset = 0) => Math.log(x + 1 + offset) - Math.log(x + offset);
-        const panel_height = pixelDim[1] / 5;
+        const panel_height = pixelDim[1] / 3;
         const panel_width = Math.floor(pixelDim[0] / 3);
         const attack = new UpgradePanel(diff_log, this, "attack", "Attack", [panel_width, panel_height], 0, 0);
         this.addElement(attack);
@@ -3345,7 +3345,7 @@ class Game {
                 this.start_touch_fort.send_units(end_touch_fort);
             }
         });
-        this.upgrade_menu = new UpgradeScreen(this.currentField.player_faction(), this, [canvas.width / 2 + 100, canvas.height / 2], canvas.width / 4 - 50, canvas.height / 4);
+        this.upgrade_menu = new UpgradeScreen(this.currentField.player_faction(), this, [canvas.width * 7 / 8, canvas.height / 2], canvas.width / 16, canvas.height / 4);
         this.upgrade_menu.refresh();
     }
     is_faction_on_field(faction) {

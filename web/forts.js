@@ -3294,18 +3294,23 @@ class UpgradePanel extends SimpleGridLayoutManager {
 ;
 class UpgradeScreen extends SimpleGridLayoutManager {
     constructor(faction, game, pixelDim, x, y) {
-        super([6, 3], pixelDim, x, y);
+        super([6, 40], pixelDim, x, y);
         this.upgrade_panels = [];
         this.faction = faction;
         this.game = game;
         let diff_log = (x, offset = 0) => Math.log(x + 1 + offset) - Math.log(x + offset);
         const panel_height = pixelDim[1] / 3;
         const panel_width = Math.floor(pixelDim[0] / 3);
+        const header_height = 96 + 12;
+        const header_label = new GuiButton(() => { }, "Forts", panel_width, header_height, 96);
+        this.addElement(new GuiSpacer([panel_width, header_height]));
+        this.addElement(header_label);
+        this.addElement(new GuiSpacer([panel_width, header_height]));
         //this.setHeight();
         const attack = new UpgradePanel(diff_log, this, "attack", "Attack", [panel_width, panel_height], 0, 0);
         this.addElement(attack);
         this.upgrade_panels.push(attack);
-        this.setHeight(attack.height() * 3);
+        this.setHeight(attack.height() * 3 + header_label.height() + 30);
         {
             const upgrades = new UpgradePanel((x) => diff_log(x, 14), this, "unit_reproduction_per_second", "Unit Prod", [panel_width, panel_height], 0, 0);
             this.addElement(upgrades);
@@ -3377,7 +3382,7 @@ class Game {
                 this.start_touch_fort.send_units(end_touch_fort);
             }
         });
-        this.upgrade_menu = new UpgradeScreen(this.currentField.player_faction(), this, [canvas.width * 7 / 8, canvas.height / 2 + 150], canvas.width / 16, canvas.height / 4);
+        this.upgrade_menu = new UpgradeScreen(this.currentField.player_faction(), this, [canvas.width * 7 / 8, canvas.height * 1 / 2], canvas.width / 16, canvas.height / 8);
         this.upgrade_menu.refresh();
     }
     is_faction_on_field(faction) {

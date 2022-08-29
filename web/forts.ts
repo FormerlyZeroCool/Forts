@@ -3959,16 +3959,18 @@ class BattleField {
             const to_copy = factions[i];
             to_copy.battleField = this;
             this.factions.push(to_copy);
-            factions_copy.push(to_copy);
+            if(i !== this.player_faction_index)
+                factions_copy.push(to_copy);
         }
 
-        for(let i = 0; i < fort_count; i++)
+        for(let i = 0; i < fort_count - 1; i++)
         {
             const placed_fort:Fort = this.place_random_fort(factions_copy);
             const faction_index = factions_copy.indexOf(placed_fort.faction);
             if(faction_index > 0)
                 factions_copy.splice(faction_index, 1);
         }
+        this.place_random_fort([this.player_faction()]);
     }
     player_faction():Faction
     {
@@ -4176,7 +4178,7 @@ class UpgradePanel extends SimpleGridLayoutManager {
             this.increment_attribute();
             this.display_value.text = this.get_value() + "";
             this.display_value.refresh();
-            this.frame.game.new_game();
+            this.frame.game.maybe_new_game();
         }, this.get_value() + "", pixelDim[0], fontSize * 2 + 20, fontSize + 2);
         this.display_name = new GuiTextBox(false, pixelDim[0], this.display_value, fontSize, fontSize * 2, GuiTextBox.default);
         
@@ -4428,6 +4430,15 @@ class Game {
         }
         if(pfc + nfc === this.currentField.forts.length && sum === 0)
             return true;
+        return false;
+    }
+    maybe_new_game():boolean
+    {
+        if(random() > 0.33)
+        {
+            this.new_game();
+            return true;
+        }
         return false;
     }
     new_game():void

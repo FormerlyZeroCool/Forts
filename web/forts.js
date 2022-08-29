@@ -2995,14 +2995,14 @@ class Fort extends SquareAABBCollidable {
         ctx.fillStyle = this.faction.color.htmlRBG();
         ctx.fillRect(this.x, this.y, this.width, this.height);
         ctx.font = `${this.font_size}px ${this.font_name}`;
-        ctx.strokeStyle = "#FFFFFF";
+        //ctx.strokeStyle = "#FFFFFF";
         ctx.fillStyle = "#000000";
-        ctx.lineWidth = 3;
-        ctx.strokeText((this.units.length + this.leaving_units.length) + "", this.mid_x() - this.width / 4, this.mid_y(), this.width / 2);
+        //ctx.lineWidth = 3;
+        //ctx.strokeText((this.units.length + this.leaving_units.length) + "", this.mid_x() - this.width / 4, this.mid_y(), this.width / 2); 
         ctx.fillText((this.units.length + this.leaving_units.length) + "", this.mid_x() - this.width / 4, this.mid_y(), this.width / 2);
         if (this.faction == this.faction.battleField.player_faction()) {
             ctx.font = `${this.font_size - 5}px ${this.font_name}`;
-            ctx.strokeText("player", this.mid_x() - this.width / 4, this.mid_y() + this.font_size, this.width / 2);
+            //ctx.strokeText("player", this.mid_x() - this.width / 4, this.mid_y() + this.font_size, this.width / 2);  
             ctx.fillText("player", this.mid_x() - this.width / 4, this.mid_y() + this.font_size, this.width / 2);
         }
         ctx.lineWidth = 1;
@@ -3357,7 +3357,7 @@ class Game {
         srand(6);
         // seeds 607, 197 are pretty good so far lol
         for (let i = 0; i < 10; i++) {
-            factions.push(new Faction("Faction " + i, new RGB(random() * 256, random() * 256, random() * 256), 120));
+            factions.push(new Faction("Faction " + i, new RGB(random() * 128 + 128, random() * 128 + 128, random() * 128 + 128), 120));
         }
         this.factions[1].unit_reproduction_per_second += 0.3;
         srand(Math.random() * max_32_bit_signed);

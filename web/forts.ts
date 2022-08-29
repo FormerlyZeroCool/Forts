@@ -4045,7 +4045,6 @@ class BattleField {
                 
                     if(max_points > 10)
                     {
-                        console.log(record.fort.faction.name, "\n", max_points,"\n", record.fort.faction.avg_move_value)
                         record.fort.auto_send_units(records[max_index].fort);
                     }
                     if(record.fort.faction.avg_move_value > 1550)
@@ -4372,7 +4371,6 @@ class Game {
         }
         const pfc = this.player_fort_count();
         const nfc = this.null_fort_count();
-        console.log(pfc, nfc, data[this.currentField.player_faction_index])
         if(pfc === 0)
         {
             return true;

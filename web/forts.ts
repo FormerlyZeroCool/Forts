@@ -4155,15 +4155,15 @@ class UpgradePanel extends SimpleGridLayoutManager {
 
     constructor(next:(x:number) => number, frame:UpgradeScreen, attribute_name:string, short_name:string, pixelDim:number[], x:number, y:number)
     {
-        super([1, 20], pixelDim, x, y);
+        super([1, 200], pixelDim, x, y);
         this.frame = frame;
-        const fontSize = isTouchSupported() ? 27:20;
+        const fontSize = isTouchSupported() ? 27:22;
         this.increase_function = next;
         this.attribute_name = attribute_name;
         this.display_value = new GuiButton(() => {
             this.increment_attribute();
             this.frame.game.new_game();
-        }, this.get_value() + "", pixelDim[0], fontSize * 2, fontSize);
+        }, this.get_value() + "", pixelDim[0], fontSize * 2 + 20, fontSize + 2);
         this.display_name = new GuiTextBox(false, pixelDim[0], this.display_value, fontSize, fontSize * 2, GuiTextBox.default);
         this.display_name.setText(short_name);
         this.display_name.refresh();
@@ -4171,7 +4171,7 @@ class UpgradePanel extends SimpleGridLayoutManager {
         this.createHandlers(this.frame.game.keyboard_handler, this.frame.game.touch_listener);
         this.addElement(this.display_name);
         this.addElement(this.display_value);
-        this.setHeight(this.display_name.height() + this.display_value.height() + 10);
+        this.setHeight(this.display_name.height() + this.display_value.height() + 5);
     }
     increment_attribute():void
     {
@@ -4270,7 +4270,7 @@ class Game {
                 this.start_touch_fort.send_units(end_touch_fort);
             }
         });
-        this.upgrade_menu = new UpgradeScreen(this.currentField.player_faction(), this, [canvas.width * 7/8, canvas.height / 2], canvas.width / 16, canvas.height / 4);
+        this.upgrade_menu = new UpgradeScreen(this.currentField.player_faction(), this, [canvas.width * 7/8, canvas.height / 2 + 150], canvas.width / 16, canvas.height / 4);
         this.upgrade_menu.refresh();
     }
     is_faction_on_field(faction:Faction):boolean

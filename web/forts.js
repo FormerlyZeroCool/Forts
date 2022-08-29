@@ -2852,9 +2852,9 @@ class Unit extends SquareAABBCollidable {
     }
     draw(canvas, ctx) {
         ctx.fillStyle = this.faction.color.htmlRBG();
-        ctx.fillRect(Math.floor(this.x), Math.floor(this.y), this.width, this.height);
+        ctx.fillRect(Math.round(this.x), Math.round(this.y), this.width, this.height);
         ctx.strokeStyle = "#000000";
-        ctx.strokeRect(Math.floor(this.x), Math.floor(this.y), this.width, this.height);
+        ctx.strokeRect(Math.round(this.x), Math.round(this.y), this.width, this.height);
     }
     update_state(delta_time) {
         if (distance(this, this.targetFort) < Math.floor(this.targetFort.width / 2)) {

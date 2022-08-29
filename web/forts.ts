@@ -3637,9 +3637,9 @@ class Unit extends SquareAABBCollidable implements Attackable {
     draw(canvas:HTMLCanvasElement, ctx:CanvasRenderingContext2D):void
     {
         ctx.fillStyle = this.faction.color.htmlRBG();
-        ctx.fillRect(Math.floor(this.x), Math.floor(this.y), this.width, this.height);
+        ctx.fillRect(Math.round(this.x), Math.round(this.y), this.width, this.height);
         ctx.strokeStyle = "#000000";
-        ctx.strokeRect(Math.floor(this.x), Math.floor(this.y), this.width, this.height)
+        ctx.strokeRect(Math.round(this.x), Math.round(this.y), this.width, this.height)
     }
     update_state(delta_time:number):boolean
     {
@@ -4280,7 +4280,7 @@ class Game {
         // seeds 607, 197 are pretty good so far lol
         for(let i = 0; i < 10; i++)
         {
-            factions.push(new Faction("Faction "+i, new RGB(random() * 256, random() * 256, random() * 256), 120));
+            factions.push(new Faction("Faction " + i, new RGB(random() * 256, random() * 256, random() * 256), 120));
         }
         this.factions[1].unit_reproduction_per_second += 0.3;
         srand(Math.random() * max_32_bit_signed);

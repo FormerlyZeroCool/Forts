@@ -3747,7 +3747,7 @@ class Fort extends SquareAABBCollidable implements Attackable {
         this.last_update_units_leaving = Date.now();
         this.units = [];
         this.leaving_units = [];
-        this.font_size = Math.ceil(this.faction.battleField.fort_dim / 3);
+        this.font_size = Math.ceil(this.faction.battleField.fort_dim * 3/8);
         this.font_name = "Helvetica";
     }
     update_state(delta_time:number):void
@@ -3814,6 +3814,7 @@ class Fort extends SquareAABBCollidable implements Attackable {
         ctx.fillText((this.units.length + this.leaving_units.length) + "", this.mid_x() - this.width / 4, this.mid_y(), this.width / 2);  
         if(this.faction == this.faction.battleField.player_faction())
         {
+            ctx.font = `${this.font_size - 5}px ${this.font_name}`;
             ctx.strokeText("player", this.mid_x() - this.width / 4, this.mid_y() + this.font_size, this.width / 2);  
             ctx.fillText("player", this.mid_x() - this.width / 4, this.mid_y() + this.font_size, this.width / 2);  
         } 

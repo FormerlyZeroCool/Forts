@@ -1636,6 +1636,7 @@ class GuiTextBox {
         }
     }
     draw(ctx, x, y, offsetX = 0, offsetY = 0) {
+        ctx.clearRect(x + offsetX, y + offsetY, this.width(), this.height());
         ctx.drawImage(this.canvas, x + offsetX, y + offsetY);
     }
 }
@@ -2831,6 +2832,14 @@ class Faction {
         this.fort_reproduction_unit_limit = fort_reproduction_unit_limit;
         this.unit_travel_speed = Math.max(getWidth(), getHeight()) / 7.5;
     }
+    auto_upgrade() {
+        const upgrade_index = Math.floor(random() * this.battleField.game.upgrade_menu.upgrade_panels.length);
+        const upgrade_panel = this.battleField.game.upgrade_menu.upgrade_panels[upgrade_index];
+        this.battleField.game.upgrade_menu.faction = this;
+        upgrade_panel.increment_attribute();
+        this.battleField.game.upgrade_menu.faction = this.battleField.player_faction();
+        upgrade_panel.refresh();
+    }
 }
 ;
 class Unit extends SquareAABBCollidable {
@@ -3256,6 +3265,8 @@ class UpgradePanel extends SimpleGridLayoutManager {
         this.attribute_name = attribute_name;
         this.display_value = new GuiButton(() => {
             this.increment_attribute();
+            this.display_value.text = this.get_value() + "";
+            this.display_value.refresh();
             this.frame.game.new_game();
         }, this.get_value() + "", pixelDim[0], fontSize * 2 + 20, fontSize + 2);
         this.display_name = new GuiTextBox(false, pixelDim[0], this.display_value, fontSize, fontSize * 2, GuiTextBox.default);
@@ -3270,8 +3281,6 @@ class UpgradePanel extends SimpleGridLayoutManager {
     increment_attribute() {
         if (this.increase_function) {
             this.frame.faction[this.attribute_name] += this.increase_function(this.frame.faction[this.attribute_name]);
-            this.display_value.text = this.get_value() + "";
-            this.display_value.refresh();
         }
     }
     get_value() {
@@ -3284,39 +3293,48 @@ class UpgradePanel extends SimpleGridLayoutManager {
 ;
 class UpgradeScreen extends SimpleGridLayoutManager {
     constructor(faction, game, pixelDim, x, y) {
-        super([6, 20], pixelDim, x, y);
+        super([6, 3], pixelDim, x, y);
+        this.upgrade_panels = [];
         this.faction = faction;
         this.game = game;
         let diff_log = (x, offset = 0) => Math.log(x + 1 + offset) - Math.log(x + offset);
         const panel_height = pixelDim[1] / 3;
         const panel_width = Math.floor(pixelDim[0] / 3);
+        //this.setHeight();
         const attack = new UpgradePanel(diff_log, this, "attack", "Attack", [panel_width, panel_height], 0, 0);
         this.addElement(attack);
+        this.upgrade_panels.push(attack);
         {
             const upgrades = new UpgradePanel((x) => diff_log(x, 14), this, "unit_reproduction_per_second", "units per sec", [panel_width, panel_height], 0, 0);
             this.addElement(upgrades);
+            this.upgrade_panels.push(upgrades);
         }
         {
             const upgrades = new UpgradePanel((x) => diff_log(x, 100), this, "unit_defense", "unit defense", [panel_width, panel_height], 0, 0);
             this.addElement(upgrades);
+            this.upgrade_panels.push(upgrades);
         }
         {
             const upgrades = new UpgradePanel((x) => diff_log(x, 95), this, "fort_defense", "fort defense", [panel_width, panel_height], 0, 0);
             this.addElement(upgrades);
+            this.upgrade_panels.push(upgrades);
         }
         {
             const upgrades = new UpgradePanel((x) => diff_log(x, 0), this, "starting_unit_hp", "unit hp", [panel_width, panel_height], 0, 0);
             this.addElement(upgrades);
+            this.upgrade_panels.push(upgrades);
         }
         {
             const upgrades = new UpgradePanel((x) => pixelDim[1] / 100, this, "unit_travel_speed", "unit speed", [panel_width, panel_height], 0, 0);
             this.addElement(upgrades);
+            this.upgrade_panels.push(upgrades);
         }
         {
             this.addElement(new GuiSpacer([panel_width, panel_height]));
             const upgrades = new UpgradePanel((x) => pixelDim[1] / 100, this, "null", "Skip", [panel_width, panel_height], 0, 0);
             upgrades.increase_function = null;
             this.addElement(upgrades);
+            this.upgrade_panels.push(upgrades);
         }
         this.refresh();
     }
@@ -3369,9 +3387,18 @@ class Game {
         }
         return counter !== this.currentField.forts.length;
     }
+    upgrade_ai_factions() {
+        this.factions[0].auto_upgrade();
+        for (let i = 2; i < this.factions.length; i++) {
+            this.factions[i].auto_upgrade();
+        }
+    }
     update_state(delta_time) {
         if (this.game_over) {
-            this.upgrade_menu.activate();
+            if (!this.upgrade_menu.active()) {
+                this.upgrade_menu.activate();
+                this.upgrade_ai_factions();
+            }
         }
         else {
             this.currentField.update_state(delta_time);
@@ -3379,9 +3406,9 @@ class Game {
         }
     }
     draw(canvas, ctx) {
-        if (!this.game_over)
-            this.currentField.draw(canvas, ctx);
-        else {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        this.currentField.draw(canvas, ctx);
+        if (this.game_over) {
             this.upgrade_menu.activate();
             this.upgrade_menu.draw(ctx);
         }

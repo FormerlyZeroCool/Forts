@@ -4265,7 +4265,7 @@ class UpgradeScreen extends SimpleGridLayoutManager {
         const panel_width = Math.floor(pixelDim[0] / 3);
         const header_height = 96 + 12;
         const header_label = new GuiButton(() => {}, "Forts", panel_width, header_height, 96);
-        header_label.unPressedColor = new RGB(0,0,0,0);
+        header_label.unPressedColor = new RGB(255,255,255,100);
         this.addElement(new GuiSpacer([panel_width, header_height]));
         this.addElement(header_label);
         this.addElement(new GuiSpacer([panel_width, header_height]));
@@ -4534,6 +4534,8 @@ class Game {
         this.currentField = new BattleField(this, this.currentField.dimensions, this.factions, this.currentField.fort_dim, 10, 20);
     }
 }
+let game:Game;
+let player_faction:Faction;
 async function main()
 {
     const canvas:HTMLCanvasElement = <HTMLCanvasElement> document.getElementById("screen");
@@ -4558,8 +4560,9 @@ async function main()
     let counter = 0;
     const touchScreen:boolean = isTouchSupported();
     const factions:Faction[] = [];
-    const game = new Game(canvas, factions);
     let start = Date.now();
+    game = new Game(canvas, factions);
+    player_faction = game.factions[1];
     const drawLoop = async () => 
     {
         game.draw(canvas, ctx);

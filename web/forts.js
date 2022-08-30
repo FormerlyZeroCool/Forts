@@ -3080,6 +3080,33 @@ function calc_points_move(attacker, defender, delta_time, hp_by_faction, board_p
     }
     points -= (enemy_after_time_to_travel_hp + defender.defense_leaving_forces / 2) + attacker.attacking_force;
     points -= defender.attacking_force / 15;
+    if (Math.abs(defender.fort.units.length - attacker.fort.units.length) < 1 && (attacker.defense_power / defender.defense_power) > 0.5) {
+        points += 2000;
+    }
+    return points;
+}
+function calc_points_move_mid_game(attacker, defender, delta_time, hp_by_faction, board_power) {
+    let points = 0;
+    const time_to_travel = (distance(attacker.fort, defender.fort) / attacker.fort.faction.unit_travel_speed);
+    const def_repro_per_frame = defender.fort.faction.unit_reproduction_per_second / (1000 / delta_time);
+    const enemy_after_time_to_travel_hp = (time_to_travel * def_repro_per_frame < defender.fort.faction.fort_reproduction_unit_limit ?
+        time_to_travel * def_repro_per_frame :
+        defender.fort.faction.fort_reproduction_unit_limit) + defender.defense_power;
+    if (attacker.fort.faction === defender.fort.faction) {
+        //points += (attacker.defense_power - enemy_after_time_to_travel_hp * 2) / 5;
+        //points -= time_to_travel * (1000 / delta_time);
+        //points = -1000;
+        //points += (attacker.defense_power) - (enemy_after_time_to_travel_hp + defender.defense_leaving_forces);
+    }
+    else {
+        points += (attacker.defense_power);
+        //points += 25;
+    }
+    points -= +(defender.fort.faction === this.player_faction()) * 200;
+    points -= (enemy_after_time_to_travel_hp + defender.defense_leaving_forces / 2) + attacker.attacking_force;
+    points -= defender.attacking_force;
+    points -= time_to_travel * 2;
+    //points += hp_by_faction.get(attacker.fort.faction)!;
     return points;
 }
 function calc_points_move_early_game(attacker, defender, delta_time, hp_by_faction, board_power) {
@@ -3099,10 +3126,11 @@ function calc_points_move_early_game(attacker, defender, delta_time, hp_by_facti
         points += (attacker.defense_power);
         //points += 25;
     }
+    points -= +(defender.fort.faction === this.player_faction()) * 400;
     points -= (enemy_after_time_to_travel_hp + defender.defense_leaving_forces / 2) + attacker.attacking_force;
     points -= defender.attacking_force;
-    points -= time_to_travel * 2;
-    points += hp_by_faction.get(attacker.fort.faction);
+    points -= time_to_travel * 3;
+    //points += hp_by_faction.get(attacker.fort.faction)!;
     return points;
 }
 class BattleField {
@@ -3192,7 +3220,13 @@ class BattleField {
                 records[fort_index].defense_force_inbound += unit.hp * (1 + unit.faction.unit_defense);
             }
         }
-        let calc_points = this.time_elapsed() > 30 * 1000 ? calc_points_move : calc_points_move_early_game;
+        let calc_points = calc_points_move_early_game;
+        if (this.time_elapsed() > 10 * 1000) {
+            calc_points = calc_points_move_mid_game;
+        }
+        else if (this.time_elapsed() > 20 * 1000) {
+            calc_points = calc_points_move;
+        }
         for (let i = 0; i < records.length; i++) {
             const record = records[i];
             if (record.fort.faction !== this.factions[0] && record.fort.faction !== this.factions[1]) {
@@ -3216,6 +3250,11 @@ class BattleField {
                     if (record.fort.faction.avg_move_value > 1550) {
                         record.fort.faction.sum_move_points = 650 * record.fort.faction.count_moves;
                         record.fort.faction.avg_move_value = 650;
+                    }
+                }
+                else if (this.time_elapsed() > 3 * 60 * 1000) {
+                    if (max_points > 100) {
+                        record.fort.auto_send_units(records[max_index].fort);
                     }
                 }
             }
@@ -3563,6 +3602,7 @@ class Game {
 let game;
 let player_faction;
 let factions;
+let send_units = (from, to) => game.currentField.forts[from].send_units(game.currentField.forts[to]);
 async function main() {
     const canvas = document.getElementById("screen");
     let maybectx = canvas.getContext("2d");

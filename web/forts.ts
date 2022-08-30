@@ -3951,7 +3951,7 @@ function calc_points_move_mid_game(attacker:FortAggregate, defender:FortAggregat
         points += (attacker.defense_power);
         //points += 25;
     }
-    points -= +(defender.fort.faction === this.player_faction()) * 200;
+    points -= +(defender.fort.faction === defender.fort.faction.battleField.player_faction()) * 200;
     points -= (enemy_after_time_to_travel_hp + defender.defense_leaving_forces / 2) + attacker.attacking_force;
     points -= defender.attacking_force;
     points -= time_to_travel * 2;

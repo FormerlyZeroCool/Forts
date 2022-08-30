@@ -4285,7 +4285,7 @@ class Game {
         const width = canvas.width;
         const height = canvas.height;
         this.mouse_down_tracker = new MouseDownTracker();
-        this.factions.push(new Faction("none", new RGB(125, 125, 125), 25));
+        this.factions.push(new Faction("none", new RGB(125, 125, 125), 20));
         this.game_over = true;
         srand(6);
         // seeds 607, 197 are pretty good so far lol

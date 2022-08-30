@@ -4565,17 +4565,12 @@ async function main()
     player_faction = game.factions[1];
     const drawLoop = async () => 
     {
+        game.update_state(Date.now() - start);
+        start = Date.now();
         game.draw(canvas, ctx);
         requestAnimationFrame(drawLoop);
     }
     drawLoop();
-    while(true)
-    {
-
-        game.update_state(Date.now() - start);
-        start = Date.now();
-        await sleep(1)
-    }
 
 }
 main();

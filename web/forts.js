@@ -3307,7 +3307,7 @@ class UpgradeScreen extends SimpleGridLayoutManager {
         this.addElement(header_label);
         this.addElement(new GuiSpacer([panel_width, header_height]));
         //this.setHeight();
-        const attack = new UpgradePanel(diff_log, this, "attack", "Attack", [panel_width, panel_height], 0, 0);
+        const attack = new UpgradePanel((x) => 0.3, this, "attack", "Attack", [panel_width, panel_height], 0, 0);
         this.addElement(attack);
         this.upgrade_panels.push(attack);
         this.setHeight(attack.height() * 3 + header_label.height() + 30);
@@ -3327,12 +3327,12 @@ class UpgradeScreen extends SimpleGridLayoutManager {
             this.upgrade_panels.push(upgrades);
         }
         {
-            const upgrades = new UpgradePanel((x) => diff_log(x, 0), this, "starting_unit_hp", "Unit HP", [panel_width, panel_height], 0, 0);
+            const upgrades = new UpgradePanel((x) => 0.3, this, "starting_unit_hp", "Unit HP", [panel_width, panel_height], 0, 0);
             this.addElement(upgrades);
             this.upgrade_panels.push(upgrades);
         }
         {
-            const upgrades = new UpgradePanel((x) => pixelDim[1] / 100, this, "unit_travel_speed", "Unit Speed", [panel_width, panel_height], 0, 0);
+            const upgrades = new UpgradePanel((x) => Math.max(pixelDim[1], pixelDim[0]) / 100, this, "unit_travel_speed", "Unit Speed", [panel_width, panel_height], 0, 0);
             this.addElement(upgrades);
             this.upgrade_panels.push(upgrades);
         }

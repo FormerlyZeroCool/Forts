@@ -4325,9 +4325,9 @@ class Game {
     mouse_down_tracker:MouseDownTracker;
     game_start:number;
     
-    constructor(canvas:HTMLCanvasElement, factions:Faction[])
+    constructor(canvas:HTMLCanvasElement)
     {
-        this.factions = factions;
+        this.factions = [];
         const width = canvas.width;
         const height = canvas.height;
         this.game_start = Date.now();
@@ -4338,7 +4338,7 @@ class Game {
         // seeds 607, 197 are pretty good so far lol
         for(let i = 0; i < 10; i++)
         {
-            factions.push(new Faction("Faction " + i, new RGB(random() * 128 + 128, random() * 128 + 128, random() * 128 + 128), 120));
+            this.factions.push(new Faction("Faction " + i, new RGB(random() * 128 + 128, random() * 128 + 128, random() * 128 + 128), 120));
         }
         this.factions[1].unit_reproduction_per_second += 0.3;
         srand(Math.random() * max_32_bit_signed);
@@ -4536,6 +4536,7 @@ class Game {
 }
 let game:Game;
 let player_faction:Faction;
+let factions:Faction[];
 async function main()
 {
     const canvas:HTMLCanvasElement = <HTMLCanvasElement> document.getElementById("screen");
@@ -4559,15 +4560,16 @@ async function main()
     canvas.style.cursor = "pointer";
     let counter = 0;
     const touchScreen:boolean = isTouchSupported();
-    const factions:Faction[] = [];
+    const game_local = new Game(canvas);
+    game = game_local;
+    player_faction = game_local.currentField.player_faction();
+    factions = game.factions;
     let start = Date.now();
-    game = new Game(canvas, factions);
-    player_faction = game.factions[1];
     const drawLoop = async () => 
     {
-        game.update_state(Date.now() - start);
+        game_local.update_state(Date.now() - start);
+        game_local.draw(canvas, ctx);
         start = Date.now();
-        game.draw(canvas, ctx);
         requestAnimationFrame(drawLoop);
     }
     drawLoop();

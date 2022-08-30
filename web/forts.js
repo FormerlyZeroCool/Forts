@@ -3352,6 +3352,7 @@ class Game {
         this.factions = factions;
         const width = canvas.width;
         const height = canvas.height;
+        this.mouse_down_tracker = new MouseDownTracker();
         this.factions.push(new Faction("none", new RGB(125, 125, 125), 25));
         this.game_over = true;
         srand(6);
@@ -3361,7 +3362,7 @@ class Game {
         }
         this.factions[1].unit_reproduction_per_second += 0.3;
         srand(Math.random() * max_32_bit_signed);
-        this.currentField = new BattleField(this, [0, 0, width, height], this.factions, Math.max(width, height) / 20, 10);
+        this.currentField = new BattleField(this, [0, 0, width, height], this.factions, Math.max(width, height) / 17, 10);
         //this.factions[0].battleField = this.currentField;
         const is_player = (e) => this.currentField.find_nearest_fort(e.touchPos[0], e.touchPos[1]).faction === this.currentField.player_faction();
         this.keyboard_handler = new KeyboardHandler();
@@ -3371,15 +3372,19 @@ class Game {
             console.log("start touch pos:", event.touchPos);
             console.log("start: ", this.start_touch_fort);
         });
-        this.touch_listener.registerCallBack("touchend", (e) => this.start_touch_fort && this.start_touch_fort.faction === this.currentField.player_faction(), (event) => {
-            const end_touch_fort = this.currentField.find_nearest_fort(event.touchPos[0], event.touchPos[1]);
+        const end_selection_possible = (e) => this.start_touch_fort && this.start_touch_fort.faction === this.currentField.player_faction();
+        this.touch_listener.registerCallBack("touchmove", end_selection_possible, (event) => {
+            this.end_touch_fort = this.currentField.find_nearest_fort(event.touchPos[0], event.touchPos[1]);
+        });
+        this.touch_listener.registerCallBack("touchend", end_selection_possible, (event) => {
+            this.end_touch_fort = this.currentField.find_nearest_fort(event.touchPos[0], event.touchPos[1]);
             console.log("end touch pos:", event.touchPos);
-            console.log("end  fort: ", end_touch_fort);
-            if (this.start_touch_fort === end_touch_fort) {
+            console.log("end  fort: ", this.end_touch_fort);
+            if (this.start_touch_fort === this.end_touch_fort) {
                 this.start_touch_fort.unsend_units();
             }
             else {
-                this.start_touch_fort.send_units(end_touch_fort);
+                this.start_touch_fort.send_units(this.end_touch_fort);
             }
         });
         this.upgrade_menu = new UpgradeScreen(this.currentField.player_faction(), this, [canvas.width * 7 / 8, canvas.height * 1 / 2], canvas.width / 16, canvas.height / 8);
@@ -3416,8 +3421,26 @@ class Game {
     }
     draw(canvas, ctx) {
         ctx.clearRect(this.currentField.dimensions[0], this.currentField.dimensions[1], this.currentField.dimensions[2], this.currentField.dimensions[3]);
-        if (!this.game_over)
+        if (!this.game_over) {
             this.currentField.draw(canvas, ctx);
+            if (this.mouse_down_tracker.mouseDown && this.start_touch_fort && this.end_touch_fort) {
+                ctx.strokeStyle = new RGB(125, 125, 125, 125).htmlRBGA();
+                ctx.lineWidth = 15;
+                ctx.beginPath();
+                const odx = this.start_touch_fort.mid_x() - this.end_touch_fort.mid_x();
+                const ody = this.start_touch_fort.mid_y() - this.end_touch_fort.mid_y();
+                const dist = Math.sqrt(odx * odx + ody * ody);
+                const ndx = odx / dist;
+                const ndy = ody / dist;
+                ctx.moveTo(this.start_touch_fort.mid_x() - ndx * this.currentField.fort_dim, this.start_touch_fort.mid_y() - ndy * this.currentField.fort_dim);
+                ctx.lineTo(this.end_touch_fort.mid_x() + ndx * (this.currentField.fort_dim), this.end_touch_fort.mid_y() + ndy * (this.currentField.fort_dim));
+                //const theta = Math.PI /2;
+                //const perp_dy = ndx * Math.cos(theta) - ndy * Math.sin(theta);
+                //const perp_dx = ndx * Math.sin(theta) + ndy * Math.cos(theta);
+                //ctx.lineTo(this.end_touch_fort.mid_x() - perp_dx * (this.currentField.fort_dim), this.end_touch_fort.mid_y() - perp_dy * (this.currentField.fort_dim));
+                ctx.stroke();
+            }
+        }
         else {
             this.upgrade_menu.activate();
             ctx.drawImage(this.currentField.canvas, this.currentField.dimensions[0], this.currentField.dimensions[1]);

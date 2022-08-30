@@ -3369,8 +3369,6 @@ class Game {
         this.touch_listener = new SingleTouchListener(canvas, true, true, false);
         this.touch_listener.registerCallBack("touchstart", is_player, (event) => {
             this.start_touch_fort = this.currentField.find_nearest_fort(event.touchPos[0], event.touchPos[1]);
-            console.log("start touch pos:", event.touchPos);
-            console.log("start: ", this.start_touch_fort);
         });
         const end_selection_possible = (e) => this.start_touch_fort && this.start_touch_fort.faction === this.currentField.player_faction();
         this.touch_listener.registerCallBack("touchmove", end_selection_possible, (event) => {
@@ -3378,14 +3376,13 @@ class Game {
         });
         this.touch_listener.registerCallBack("touchend", end_selection_possible, (event) => {
             this.end_touch_fort = this.currentField.find_nearest_fort(event.touchPos[0], event.touchPos[1]);
-            console.log("end touch pos:", event.touchPos);
-            console.log("end  fort: ", this.end_touch_fort);
             if (this.start_touch_fort === this.end_touch_fort) {
                 this.start_touch_fort.unsend_units();
             }
             else {
                 this.start_touch_fort.send_units(this.end_touch_fort);
             }
+            this.end_touch_fort = null;
         });
         this.upgrade_menu = new UpgradeScreen(this.currentField.player_faction(), this, [canvas.width * 7 / 8, canvas.height * 1 / 2], canvas.width / 16, canvas.height / 8);
         this.upgrade_menu.refresh();
@@ -3410,7 +3407,6 @@ class Game {
         if (this.game_over) {
             if (!this.upgrade_menu.active()) {
                 this.upgrade_menu.activate();
-                this.upgrade_ai_factions();
                 this.upgrade_ai_factions();
             }
         }
@@ -3512,6 +3508,8 @@ class Game {
         return false;
     }
     new_game() {
+        this.start_touch_fort = null;
+        this.end_touch_fort = null;
         this.upgrade_menu.deactivate();
         this.game_over = false;
         this.currentField = new BattleField(this, this.currentField.dimensions, this.factions, this.currentField.fort_dim, 10, 20);

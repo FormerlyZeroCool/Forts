@@ -3611,6 +3611,10 @@ class Faction {
         this.fort_reproduction_unit_limit = fort_reproduction_unit_limit;
         this.unit_travel_speed = Math.max(getWidth(), getHeight()) / 7.5;
     }
+    time_elapsed():number
+    {
+        return this.battleField.time_elapsed();
+    }
     auto_upgrade():void
     {
         const upgrade_index = Math.floor(random() * this.battleField.game.upgrade_menu.upgrade_panels.length);
@@ -3899,7 +3903,7 @@ class FactionAggregate {
     total_units:number;
     units_attacking:number;
 };
-function calc_points_move(attacker:FortAggregate, defender:FortAggregate, delta_time:number):number
+function calc_points_move(attacker:FortAggregate, defender:FortAggregate, delta_time:number, hp_by_faction:Map<Faction, number>, board_power:number):number
 {
     let points = 0;
     const time_to_travel:number = (distance(attacker.fort, defender.fort) / attacker.fort.faction.unit_travel_speed);
@@ -3921,6 +3925,33 @@ function calc_points_move(attacker:FortAggregate, defender:FortAggregate, delta_
     }
     points -= (enemy_after_time_to_travel_hp + defender.defense_leaving_forces / 2) + attacker.attacking_force;
     points -= defender.attacking_force / 15;
+
+    return points;
+}
+function calc_points_move_early_game(attacker:FortAggregate, defender:FortAggregate, delta_time:number, hp_by_faction:Map<Faction, number>, board_power:number):number
+{
+    let points = 0;
+    const time_to_travel:number = (distance(attacker.fort, defender.fort) / attacker.fort.faction.unit_travel_speed);
+    const def_repro_per_frame = defender.fort.faction.unit_reproduction_per_second / (1000 / delta_time);
+
+    const enemy_after_time_to_travel_hp:number = (time_to_travel * def_repro_per_frame < defender.fort.faction.fort_reproduction_unit_limit ?
+        time_to_travel * def_repro_per_frame : 
+        defender.fort.faction.fort_reproduction_unit_limit) + defender.defense_power;
+    if(attacker.fort.faction === defender.fort.faction)
+    {
+        //points += (attacker.defense_power - enemy_after_time_to_travel_hp * 2) / 5;
+        //points -= time_to_travel * (1000 / delta_time);
+        //points = -1000;
+        //points += (attacker.defense_power) - (enemy_after_time_to_travel_hp + defender.defense_leaving_forces);
+    }
+    else{
+        points += (attacker.defense_power);
+        //points += 25;
+    }
+    points -= (enemy_after_time_to_travel_hp + defender.defense_leaving_forces / 2) + attacker.attacking_force;
+    points -= defender.attacking_force;
+    points -= time_to_travel * 2;
+    points += hp_by_faction.get(attacker.fort.faction)!;
 
     return points;
 }
@@ -3972,6 +4003,10 @@ class BattleField {
         }
         this.place_random_fort([this.player_faction()]);
     }
+    time_elapsed():number
+    {
+        return this.game.time_elapsed();
+    }
     player_faction():Faction
     {
         return this.factions[this.player_faction_index];
@@ -3986,7 +4021,15 @@ class BattleField {
     handleAI(delta_time:number):void
     {
         let records:FortAggregate[] = [];
+        let hp_by_faction_index = this.game.hp_by_faction();
+        let sum_power = 0;
+        const hp_by_faction_map = new Map<Faction, number>();
         const fort_index_lookup:Map<Fort, number> = new Map();
+        for(let i = 0; i < hp_by_faction_index.length; i++)
+        {
+            hp_by_faction_map.set(this.factions[i], hp_by_faction_index[i]);
+            sum_power += hp_by_faction_index[i];
+        }
         for(let i = 0; i < this.forts.length; i++)
         {
             const fort:Fort = this.forts[i];
@@ -4028,17 +4071,18 @@ class BattleField {
             }
 
         }
+        let calc_points = this.time_elapsed() > 30 * 1000 ? calc_points_move : calc_points_move_early_game;
         for(let i = 0; i < records.length; i++)
         {
             const record:FortAggregate = records[i];
             if(record.fort.faction !== this.factions[0] && record.fort.faction !== this.factions[1])
             {
                 //not no faction, and not player
-                let max_points:number = calc_points_move(record, records[0], delta_time);
+                let max_points:number = calc_points(record, records[0], delta_time, hp_by_faction_map, sum_power);
                 let max_index:number = 0;
                 for(let j = 1; j < records.length; j++)
                 {
-                    const points:number = calc_points_move(record, records[j], delta_time);
+                    const points:number = calc_points(record, records[j], delta_time, hp_by_faction_map, sum_power);
                     if(max_points < points)
                     {
                         max_points = points;
@@ -4221,6 +4265,7 @@ class UpgradeScreen extends SimpleGridLayoutManager {
         const panel_width = Math.floor(pixelDim[0] / 3);
         const header_height = 96 + 12;
         const header_label = new GuiButton(() => {}, "Forts", panel_width, header_height, 96);
+        header_label.unPressedColor = new RGB(0,0,0,0);
         this.addElement(new GuiSpacer([panel_width, header_height]));
         this.addElement(header_label);
         this.addElement(new GuiSpacer([panel_width, header_height]));
@@ -4278,12 +4323,14 @@ class Game {
     game_over:boolean;
     board_cache:HTMLCanvasElement
     mouse_down_tracker:MouseDownTracker;
+    game_start:number;
     
     constructor(canvas:HTMLCanvasElement, factions:Faction[])
     {
         this.factions = factions;
         const width = canvas.width;
         const height = canvas.height;
+        this.game_start = Date.now();
         this.mouse_down_tracker = new MouseDownTracker();
         this.factions.push(new Faction("none", new RGB(125, 125, 125), 20));
         this.game_over = true;
@@ -4377,6 +4424,8 @@ class Game {
                 const ndy = ody / dist;
                 ctx.moveTo(this.start_touch_fort.mid_x() - ndx * this.currentField.fort_dim, this.start_touch_fort.mid_y() - ndy * this.currentField.fort_dim);
                 ctx.lineTo(this.end_touch_fort.mid_x() + ndx * (this.currentField.fort_dim), this.end_touch_fort.mid_y() + ndy * (this.currentField.fort_dim));
+                ctx.moveTo(this.end_touch_fort.mid_x() + this.currentField.fort_dim, this.end_touch_fort.mid_y());
+                ctx.arc(this.end_touch_fort.mid_x(), this.end_touch_fort.mid_y(), this.currentField.fort_dim, 0, 2 * Math.PI);
                 //const theta = Math.PI /2;
                 //const perp_dy = ndx * Math.cos(theta) - ndy * Math.sin(theta);
                 //const perp_dx = ndx * Math.sin(theta) + ndy * Math.cos(theta);
@@ -4391,6 +4440,10 @@ class Game {
             ctx.drawImage(this.currentField.canvas, this.currentField.dimensions[0], this.currentField.dimensions[1]);
             this.upgrade_menu.draw(ctx);
         }
+    }
+    time_elapsed():number
+    {
+        return Date.now() - this.game_start;
     }
     hp_by_faction():number[]
     {
@@ -4477,6 +4530,7 @@ class Game {
         this.end_touch_fort = null;
         this.upgrade_menu.deactivate();
         this.game_over = false;
+        this.game_start = Date.now();
         this.currentField = new BattleField(this, this.currentField.dimensions, this.factions, this.currentField.fort_dim, 10, 20);
     }
 }

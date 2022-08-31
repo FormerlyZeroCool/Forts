@@ -3923,12 +3923,8 @@ function calc_points_move(attacker:FortAggregate, defender:FortAggregate, delta_
         points += (attacker.defense_power);
         //points += 25;
     }
-    points -= (enemy_after_time_to_travel_hp + defender.defense_leaving_forces / 2) + attacker.attacking_force;
+    points -= (enemy_after_time_to_travel_hp + defender.defense_leaving_forces / 2) - attacker.attacking_force;
     points -= defender.attacking_force / 15;
-    if(Math.abs(defender.fort.units.length - attacker.fort.units.length) < 1 && (attacker.defense_power / defender.defense_power) > 0.5)
-    {
-        points += 2000;
-    }
     return points;
 }
 function calc_points_move_mid_game(attacker:FortAggregate, defender:FortAggregate, delta_time:number, hp_by_faction:Map<Faction, number>, board_power:number):number
@@ -4145,9 +4141,9 @@ class BattleField {
                         record.fort.faction.avg_move_value = 650;
                     }
                 }
-                else if(this.time_elapsed() > 3 * 60 * 1000)
+                else if(record.fort.units.length >= record.fort.faction.fort_reproduction_unit_limit)
                 {
-                    if(max_points > 100)
+                    //if(max_points > 100)
                     {
                         record.fort.auto_send_units(records[max_index].fort);
                     }
@@ -4362,7 +4358,7 @@ class UpgradeScreen extends SimpleGridLayoutManager {
 class Game {
     currentField:BattleField;
     factions:Faction[];
-    start_touch_fort:Fort|null;
+    start_touch_forts:Fort[];
     end_touch_fort:Fort|null;
     upgrade_menu:UpgradeScreen;
     touch_listener:SingleTouchListener;
@@ -4375,6 +4371,7 @@ class Game {
     constructor(canvas:HTMLCanvasElement)
     {
         this.factions = [];
+        this.start_touch_forts = [];
         const width = canvas.width;
         const height = canvas.height;
         this.game_start = Date.now();
@@ -4395,21 +4392,34 @@ class Game {
         this.keyboard_handler = new KeyboardHandler();
         this.touch_listener = new SingleTouchListener(canvas, true, true, false);
         this.touch_listener.registerCallBack("touchstart", is_player, (event:any) => {
-            this.start_touch_fort = this.currentField.find_nearest_fort(event.touchPos[0], event.touchPos[1]);
+            this.start_touch_forts.splice(0, this.start_touch_forts.length);
+            const nearest_fort = this.currentField.find_nearest_fort(event.touchPos[0], event.touchPos[1]);
+            if(nearest_fort.faction === this.currentField.player_faction())
+                this.start_touch_forts.push(nearest_fort);
         });
-        const end_selection_possible = (e:any) => this.start_touch_fort && this.start_touch_fort.faction === this.currentField.player_faction();
+        const end_selection_possible = (e:any) => this.start_touch_forts.length !== 0;
         this.touch_listener.registerCallBack("touchmove", end_selection_possible, (event:any) =>{
-            this.end_touch_fort = this.currentField.find_nearest_fort(event.touchPos[0], event.touchPos[1]);
+            const nearest_fort = this.currentField.find_nearest_fort(event.touchPos[0], event.touchPos[1]);
+            this.end_touch_fort = nearest_fort;
+            if(nearest_fort.faction === this.currentField.player_faction())
+                this.start_touch_forts.push(nearest_fort);
         });
         this.touch_listener.registerCallBack("touchend", end_selection_possible, (event:any) => {
             this.end_touch_fort = this.currentField.find_nearest_fort(event.touchPos[0], event.touchPos[1]);
-            if(this.start_touch_fort === this.end_touch_fort)
+            for(let i = 0; i < this.start_touch_forts.length; i++)
             {
-                this.start_touch_fort!.unsend_units();
-            }
-            else
-            {
-                this.start_touch_fort!.send_units(this.end_touch_fort);
+                const start_fort = this.start_touch_forts[i];
+                if(start_fort.faction === this.currentField.player_faction())
+                {
+                    if(start_fort === this.end_touch_fort)
+                    {
+                        start_fort.unsend_units();
+                    }
+                    else
+                    {
+                        start_fort.send_units(this.end_touch_fort);
+                    }
+                }
             }
             this.end_touch_fort = null;
         });
@@ -4459,26 +4469,34 @@ class Game {
         if(!this.game_over)
         {
             this.currentField.draw(canvas, ctx);
-            if(this.mouse_down_tracker.mouseDown && this.start_touch_fort && this.end_touch_fort)
+            if(this.mouse_down_tracker.mouseDown && this.start_touch_forts.length && this.end_touch_fort)
             {
                 ctx.strokeStyle = new RGB(125, 125, 125, 125).htmlRBGA();
                 ctx.lineWidth = 15;
                 ctx.beginPath();
-                const odx = this.start_touch_fort.mid_x() - this.end_touch_fort.mid_x();
-                const ody = this.start_touch_fort.mid_y() - this.end_touch_fort.mid_y();
-                const dist = Math.sqrt(odx*odx + ody*ody);
-                const ndx = odx / dist;
-                const ndy = ody / dist;
-                ctx.moveTo(this.start_touch_fort.mid_x() - ndx * this.currentField.fort_dim, this.start_touch_fort.mid_y() - ndy * this.currentField.fort_dim);
-                ctx.lineTo(this.end_touch_fort.mid_x() + ndx * (this.currentField.fort_dim), this.end_touch_fort.mid_y() + ndy * (this.currentField.fort_dim));
-                ctx.moveTo(this.end_touch_fort.mid_x() + this.currentField.fort_dim, this.end_touch_fort.mid_y());
-                ctx.arc(this.end_touch_fort.mid_x(), this.end_touch_fort.mid_y(), this.currentField.fort_dim, 0, 2 * Math.PI);
-                //const theta = Math.PI /2;
-                //const perp_dy = ndx * Math.cos(theta) - ndy * Math.sin(theta);
-                //const perp_dx = ndx * Math.sin(theta) + ndy * Math.cos(theta);
-                //ctx.lineTo(this.end_touch_fort.mid_x() - perp_dx * (this.currentField.fort_dim), this.end_touch_fort.mid_y() - perp_dy * (this.currentField.fort_dim));
-                ctx.stroke();
+                for(let i = 0; i < this.start_touch_forts.length; i++)
+                {
+                    const start_fort = this.start_touch_forts[i]!;
+                    const end_fort = this.end_touch_fort;
+                    const odx = start_fort.mid_x() - end_fort.mid_x();
+                    const ody = start_fort.mid_y() - end_fort.mid_y();
+                    const dist = Math.sqrt(odx*odx + ody*ody);
+                    const ndx = odx / dist;
+                    const ndy = ody / dist;
+                    let sx = start_fort.mid_x() - ndx * this.currentField.fort_dim;
+                    let sy = start_fort.mid_y() - ndy * this.currentField.fort_dim;
+                    if(Math.sqrt(odx*odx + ody*ody) <= this.currentField.fort_dim)
+                    {
+                        sx = start_fort.mid_x();
+                        sy = start_fort.mid_y();
+                    }
+                    ctx.moveTo(sx, sy);
+                    ctx.lineTo(end_fort.mid_x() + ndx * (this.currentField.fort_dim), end_fort.mid_y() + ndy * (this.currentField.fort_dim));
+                    ctx.moveTo(end_fort.mid_x() + this.currentField.fort_dim, end_fort.mid_y());
+                    ctx.arc(end_fort.mid_x(), end_fort.mid_y(), this.currentField.fort_dim, 0, 2 * Math.PI);
+                }
                 
+                ctx.stroke();
             }
         }
         else 
@@ -4573,7 +4591,7 @@ class Game {
     }
     new_game():void
     {
-        this.start_touch_fort = null;
+        this.start_touch_forts = [];
         this.end_touch_fort = null;
         this.upgrade_menu.deactivate();
         this.game_over = false;

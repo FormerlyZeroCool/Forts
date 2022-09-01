@@ -316,13 +316,7 @@ function calc_points_move_mid_game(attacker, defender, delta_time, hp_by_faction
         time_to_travel * def_repro_per_frame :
         defender.fort.faction.fort_reproduction_unit_limit) + defender.defense_power;
     points -= +(defender.fort.faction === defender.fort.faction.battleField.player_faction()) * 200;
-    if (attacker.fort.faction === defender.fort.faction) {
-        //points += (attacker.defense_power - enemy_after_time_to_travel_hp * 2) / 5;
-        //points -= time_to_travel * (1000 / delta_time);
-        //points = -1000;
-        //points += (attacker.defense_power) - (enemy_after_time_to_travel_hp + defender.defense_leaving_forces);
-    }
-    else if (defender.en_route_from_player === 0) {
+    if (attacker.fort.faction !== defender.fort.faction && defender.en_route_from_player === 0) {
         points += (attacker.defense_power);
         points -= (enemy_after_time_to_travel_hp + defender.defense_leaving_forces / 2) + attacker.attacking_force;
         points -= defender.attacking_force;
@@ -339,20 +333,16 @@ function calc_points_move_early_game(attacker, defender, delta_time, hp_by_facti
     const enemy_after_time_to_travel_hp = (time_to_travel * def_repro_per_frame < defender.fort.faction.fort_reproduction_unit_limit ?
         time_to_travel * def_repro_per_frame :
         defender.fort.faction.fort_reproduction_unit_limit) + defender.defense_power;
-    points -= +(defender.fort.faction === defender.fort.faction.battleField.player_faction()) * 400;
-    if (attacker.fort.faction === defender.fort.faction) {
-        //points += (attacker.defense_power - enemy_after_time_to_travel_hp * 2) / 5;
-        //points -= time_to_travel * (1000 / delta_time);
-        //points = -1000;
-        //points += (attacker.defense_power) - (enemy_after_time_to_travel_hp + defender.defense_leaving_forces);
-    }
-    else if (defender.fort.faction === defender.fort.faction.battleField.factions[0] && defender.en_route_from_player === 0) {
+    if (attacker.fort.faction !== defender.fort.faction && defender.fort.faction === defender.fort.faction.battleField.factions[0] && defender.en_route_from_player === 0) {
         points += (attacker.defense_power);
         points -= (enemy_after_time_to_travel_hp + defender.defense_leaving_forces / 2) + attacker.attacking_force;
         points -= defender.attacking_force;
         points -= time_to_travel;
-        //points += 25;
     }
+    else {
+        points = -10000;
+    }
+    points -= +(defender.fort.faction === defender.fort.faction.battleField.player_faction()) * 400;
     //points += hp_by_faction.get(attacker.fort.faction)!;
     return points;
 }
@@ -561,18 +551,14 @@ class BattleField {
 }
 ;
 class UpgradePanel extends SimpleGridLayoutManager {
-    constructor(next, frame, attribute_name, short_name, pixelDim, x, y) {
+    constructor(next, frame, attribute_name, short_name, pixelDim, x, y, alt_text = () => "", callback = () => this.default_upgrade_callback()) {
         super([1, 200], pixelDim, x, y);
         this.frame = frame;
+        this.alt_text = alt_text;
         const fontSize = isTouchSupported() ? 27 : 22;
         this.increase_function = next;
         this.attribute_name = attribute_name;
-        this.display_value = new GuiButton(() => {
-            this.increment_attribute();
-            this.display_value.text = this.get_value() + "";
-            this.display_value.refresh();
-            this.frame.game.maybe_new_game();
-        }, this.get_value() + "", pixelDim[0], fontSize * 2 + 20, fontSize + 2);
+        this.display_value = new GuiButton(callback, this.get_value() + "", pixelDim[0], fontSize * 2 + 20, fontSize + 2);
         this.display_name = new GuiTextBox(false, pixelDim[0], this.display_value, fontSize, fontSize * 2, GuiTextBox.default);
         this.display_name.setText(short_name);
         this.display_name.refresh();
@@ -582,16 +568,26 @@ class UpgradePanel extends SimpleGridLayoutManager {
         this.addElement(this.display_value);
         this.setHeight(this.display_name.height() + this.display_value.height() + 5);
     }
+    default_upgrade_callback() {
+        this.increment_attribute();
+        this.display_value.text = this.get_value() + "";
+        this.display_value.refresh();
+        this.frame.game.maybe_new_game();
+    }
+    update_display_value() {
+        this.display_value.text = this.get_value() + "";
+        this.display_value.refresh();
+    }
     increment_attribute() {
         if (this.increase_function) {
             this.frame.faction[this.attribute_name] += this.increase_function(this.frame.faction[this.attribute_name]);
         }
     }
     get_value() {
-        if (this.frame.faction[this.attribute_name] !== undefined)
+        if (this.frame.faction[this.attribute_name] !== undefined && this.alt_text() === "")
             return Math.round(this.frame.faction[this.attribute_name] * 1000) / 1000;
         else
-            return "No Upgrades";
+            return this.alt_text();
     }
 }
 ;
@@ -641,11 +637,23 @@ class UpgradeScreen extends SimpleGridLayoutManager {
             this.upgrade_panels.push(upgrades);
         }
         {
-            this.addElement(new GuiSpacer([panel_width, panel_height]));
-            const upgrades = new UpgradePanel((x) => pixelDim[1] / 100, this, "null", "Skip", [panel_width, panel_height], 0, 0);
+            const level_toggle = new UpgradePanel((x) => pixelDim[1] / 100, this, "null", "Levels", [panel_width, panel_height], 0, 0, () => game.difficulty + "", () => {
+                game.difficulty = (game.difficulty + 1) % 10;
+                level_toggle.update_display_value();
+            });
+            this.addElement(level_toggle);
+            this.upgrade_panels.push(level_toggle);
+        }
+        {
+            const upgrades = new UpgradePanel((x) => pixelDim[1] / 100, this, "null", "Skip", [panel_width, panel_height], 0, 0, () => "Skip Leveling");
             upgrades.increase_function = null;
             this.addElement(upgrades);
             this.upgrade_panels.push(upgrades);
+        }
+        {
+            const joint_move_toggle = new UpgradePanel((x) => pixelDim[1] / 100, this, "null", "Joint Moves", [panel_width, panel_height], 0, 0, () => game.joint_attack_mode + "", () => { game.joint_attack_mode = !game.joint_attack_mode; joint_move_toggle.update_display_value(); });
+            this.addElement(joint_move_toggle);
+            this.upgrade_panels.push(joint_move_toggle);
         }
         this.refresh();
     }
@@ -655,6 +663,7 @@ class Game {
     constructor(canvas) {
         this.dev_mode = false;
         this.joint_attack_mode = false;
+        this.difficulty = 0;
         this.wins = 0;
         this.losses = 0;
         this.factions = [];
@@ -714,6 +723,7 @@ class Game {
         });
         this.upgrade_menu = new UpgradeScreen(this.currentField.player_faction(), this, [canvas.width * 7 / 8, canvas.height * 1 / 2], canvas.width / 16, canvas.height / 8);
         this.upgrade_menu.refresh();
+        this.upgrade_menu.activate();
     }
     is_faction_on_field(faction) {
         let counter = 0;
@@ -731,18 +741,26 @@ class Game {
             this.factions[i].auto_upgrade();
         }
     }
+    end_game() {
+        for (let i = 0; i < this.difficulty; i++)
+            this.upgrade_ai_factions();
+        if (this.is_faction_on_field(this.currentField.player_faction())) {
+            this.wins++;
+            this.currentField.player_faction().wins++;
+        }
+        else {
+            this.losses++;
+            const winner = this.find_non_null_fort_faction();
+            if (winner)
+                winner.wins++;
+        }
+    }
     update_state(delta_time) {
         if (this.game_over) {
-            if (!this.upgrade_menu.active()) {
+            if (!this.upgrade_menu.active()) // only once per game over this if will be true
+             {
                 this.upgrade_menu.activate();
-                this.upgrade_ai_factions();
-                this.upgrade_ai_factions();
-                if (this.is_faction_on_field(this.currentField.player_faction())) {
-                    this.wins++;
-                }
-                else {
-                    this.losses++;
-                }
+                this.end_game();
             }
         }
         else {
@@ -781,13 +799,21 @@ class Game {
             }
         }
         else {
-            this.upgrade_menu.activate();
             ctx.drawImage(this.currentField.canvas, this.currentField.dimensions[0], this.currentField.dimensions[1]);
             this.upgrade_menu.draw(ctx);
         }
     }
     time_elapsed() {
         return Date.now() - this.game_start;
+    }
+    find_non_null_fort_faction() {
+        let faction = this.currentField.forts[0].faction;
+        let i = 1;
+        while (faction === this.factions[0]) {
+            faction = this.currentField.forts[i] ? this.currentField.forts[i].faction : null;
+            i++;
+        }
+        return faction;
     }
     hp_by_faction() {
         let unit_counts = [];
@@ -895,3 +921,5 @@ async function main() {
 }
 main();
 window.send_units = (from, to) => window.game.currentField.forts[from].send_units(window.game.currentField.forts[to]);
+//toggle hard mode  //hard mode has ai upgrade 2x for every player upgrade
+//toggle joint control mode

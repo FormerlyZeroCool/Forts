@@ -849,7 +849,6 @@ class Game {
         this.currentField = new BattleField(this, this.currentField.dimensions, this.factions, this.currentField.fort_dim, 10);
     }
 }
-window.send_units = (from, to) => window.game.currentField.forts[from].send_units(window.game.currentField.forts[to]);
 async function main() {
     const canvas = document.getElementById("screen");
     let maybectx = canvas.getContext("2d");
@@ -882,3 +881,4 @@ async function main() {
     drawLoop();
 }
 main();
+window.send_units = (from, to) => window.game.currentField.forts[from].send_units(window.game.currentField.forts[to]);

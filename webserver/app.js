@@ -19,13 +19,13 @@ const httpServer = http.createServer(app);
 
 
 //Middleware Definition 
-app.use(express.static('../web'));
+app.use(express.static('../'));
 app.use(express.json())
 app.use(express.urlencoded({extended:false}))
 routerGen.gen(app);
 //End Middleware definition
 
 //Start Server
-console.log("Starting up serveri on ports: "+process.env.PORT+", "+process.env.PORTSSL);
+console.log("Starting up server on ports: "+process.env.PORT+", "+process.env.PORTSSL);
 httpServer.listen(process.env.PORT,() => console.log('Server started listening on port: '+process.env.PORT));
 //httpsServer.listen(process.env.PORTSSL,() => console.log('Server started listening on port: '+process.env.PORTSSL)); 

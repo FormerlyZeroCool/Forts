@@ -10,7 +10,7 @@ function gen(app)
 {
     //Routes definition
     app.post('/data',async (req,res,err) => {
-	      console.log(req.body);
+	    console.log(req.body);
         res.send("test get root live working");
     });
 

@@ -377,6 +377,7 @@ class FortAggregate {
     defense_leaving_forces:number;
     attacking_force:number;
     defense_force_inbound:number;
+    en_route_from_player:number;
 
     constructor(fort:Fort, defense_power:number, defense_leaving_forces:number)
     {
@@ -384,6 +385,7 @@ class FortAggregate {
         this.defense_power = defense_power;
         this.defense_leaving_forces = defense_leaving_forces;
         this.attacking_force = 0;
+        this.en_route_from_player = 0;
     }
     immediate_defense_power():number
     {
@@ -428,6 +430,8 @@ function calc_points_move_mid_game(attacker:FortAggregate, defender:FortAggregat
     const enemy_after_time_to_travel_hp:number = (time_to_travel * def_repro_per_frame < defender.fort.faction.fort_reproduction_unit_limit ?
         time_to_travel * def_repro_per_frame : 
         defender.fort.faction.fort_reproduction_unit_limit) + defender.defense_power;
+
+    points -= +(defender.fort.faction === defender.fort.faction.battleField.player_faction()) * 200;
     if(attacker.fort.faction === defender.fort.faction)
     {
         //points += (attacker.defense_power - enemy_after_time_to_travel_hp * 2) / 5;
@@ -435,14 +439,13 @@ function calc_points_move_mid_game(attacker:FortAggregate, defender:FortAggregat
         //points = -1000;
         //points += (attacker.defense_power) - (enemy_after_time_to_travel_hp + defender.defense_leaving_forces);
     }
-    else{
+    else if(defender.en_route_from_player === 0) {
         points += (attacker.defense_power);
+        points -= (enemy_after_time_to_travel_hp + defender.defense_leaving_forces / 2) + attacker.attacking_force;
+        points -= defender.attacking_force;
+        points -= time_to_travel * 2;
         //points += 25;
     }
-    points -= +(defender.fort.faction === defender.fort.faction.battleField.player_faction()) * 200;
-    points -= (enemy_after_time_to_travel_hp + defender.defense_leaving_forces / 2) + attacker.attacking_force;
-    points -= defender.attacking_force;
-    points -= time_to_travel * 2;
     //points += hp_by_faction.get(attacker.fort.faction)!;
 
     return points;
@@ -456,6 +459,7 @@ function calc_points_move_early_game(attacker:FortAggregate, defender:FortAggreg
     const enemy_after_time_to_travel_hp:number = (time_to_travel * def_repro_per_frame < defender.fort.faction.fort_reproduction_unit_limit ?
         time_to_travel * def_repro_per_frame : 
         defender.fort.faction.fort_reproduction_unit_limit) + defender.defense_power;
+    points -= +(defender.fort.faction === defender.fort.faction.battleField.player_faction()) * 400;
     if(attacker.fort.faction === defender.fort.faction)
     {
         //points += (attacker.defense_power - enemy_after_time_to_travel_hp * 2) / 5;
@@ -463,14 +467,13 @@ function calc_points_move_early_game(attacker:FortAggregate, defender:FortAggreg
         //points = -1000;
         //points += (attacker.defense_power) - (enemy_after_time_to_travel_hp + defender.defense_leaving_forces);
     }
-    else{
+    else if (defender.fort.faction === defender.fort.faction.battleField.factions[0] && defender.en_route_from_player === 0) {
         points += (attacker.defense_power);
+        points -= (enemy_after_time_to_travel_hp + defender.defense_leaving_forces / 2) + attacker.attacking_force;
+        points -= defender.attacking_force;
+        points -= time_to_travel;
         //points += 25;
     }
-    points -= +(defender.fort.faction === defender.fort.faction.battleField.player_faction()) * 400;
-    points -= (enemy_after_time_to_travel_hp + defender.defense_leaving_forces / 2) + attacker.attacking_force;
-    points -= defender.attacking_force;
-    points -= time_to_travel * 3;
     //points += hp_by_faction.get(attacker.fort.faction)!;
 
     return points;
@@ -588,6 +591,11 @@ class BattleField {
             else
             {
                 records[fort_index].defense_force_inbound += unit.hp * (1 + unit.faction.unit_defense);
+            }
+
+            if(unit.faction === unit.faction.battleField.player_faction())
+            {
+                records[fort_index].en_route_from_player +=  unit.hp;
             }
 
         }
@@ -959,6 +967,7 @@ class Game {
             if(!this.upgrade_menu.active())
             {
                 this.upgrade_menu.activate();
+                this.upgrade_ai_factions();
                 this.upgrade_ai_factions();
             }
         }

@@ -655,6 +655,8 @@ class Game {
     constructor(canvas) {
         this.dev_mode = false;
         this.joint_attack_mode = false;
+        this.wins = 0;
+        this.losses = 0;
         this.factions = [];
         this.start_touch_forts = [];
         const width = canvas.width;
@@ -735,6 +737,12 @@ class Game {
                 this.upgrade_menu.activate();
                 this.upgrade_ai_factions();
                 this.upgrade_ai_factions();
+                if (this.is_faction_on_field(this.currentField.player_faction())) {
+                    this.wins++;
+                }
+                else {
+                    this.losses++;
+                }
             }
         }
         else {

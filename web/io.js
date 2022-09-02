@@ -329,3 +329,8 @@ export class MultiTouchListener {
     }
 }
 ;
+export async function fetchImage(url) {
+    const img = new Image();
+    img.src = URL.createObjectURL(await (await fetch(url)).blob());
+    return img;
+}

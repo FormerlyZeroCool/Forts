@@ -1,4 +1,4 @@
-import {SingleTouchListener, isTouchSupported, KeyboardHandler} from './io.js'
+import {SingleTouchListener, isTouchSupported, KeyboardHandler, fetchImage} from './io.js'
 
 export function blendAlphaCopy(color0:RGB, color:RGB):void
 {
@@ -272,7 +272,7 @@ export class Pair<T,U = T> {
 export class ImageContainer {
     image:HTMLImageElement | null;
     name:string;
-    constructor(imageName:string, imagePath:string, callBack:((image:HTMLImageElement) => void) = (img) => console.log(imageName + " loaded."))
+    constructor(imageName:string, imagePath:string, callBack:((image:HTMLImageElement) => void) = (img) => console.log(imagePath + " loaded.", img))
     {
         this.image = null;
         if(imagePath && imageName)

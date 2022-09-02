@@ -84,7 +84,7 @@ class Faction {
     count_moves:number;
 
     
-    constructor(name:string, color:RGB, fort_reproduction_unit_limit:number)
+    constructor(name:string, color:RGB, fort_reproduction_unit_limit:number, load_image:boolean = false)
     {
         this.name = name;
         this.attack = 4 * (1 + random() / 5);
@@ -99,7 +99,10 @@ class Faction {
         this.money_production_per_second = 10;
         this.fort_reproduction_unit_limit = fort_reproduction_unit_limit;
         this.unit_travel_speed = Math.max(getWidth(), getHeight()) / 7.5;
-        this.fort_avatar = new ImageContainer(this.name, `./images/${this.name}.png`);
+        if(load_image)
+            this.fort_avatar = new ImageContainer(this.name, `./images/${this.name}.png`);
+        else
+            this.fort_avatar = new ImageContainer(this.name, null);
     }
     time_elapsed():number
     {
@@ -916,7 +919,7 @@ class Game {
         // seeds 607, 197 are pretty good so far lol
         for(let i = 0; i < 4; i++)
         {
-            this.factions.push(new Faction("faction" + i, new RGB(random() * 128 + 128, random() * 128 + 128, random() * 128 + 128), 120));
+            this.factions.push(new Faction("faction" + i, new RGB(random() * 128 + 128, random() * 128 + 128, random() * 128 + 128), 120, true));
         }
         this.factions[1].unit_reproduction_per_second += 0.3;
         srand(Math.random() * max_32_bit_signed);

@@ -423,3 +423,11 @@ export class MultiTouchListener {
         }
     }
 };
+
+
+export async function fetchImage(url:string):Promise<HTMLImageElement>
+{
+    const img = new Image();
+    img.src =  URL.createObjectURL(await (await fetch(url)).blob());
+    return img;
+}

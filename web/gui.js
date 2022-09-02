@@ -1,4 +1,4 @@
-import { isTouchSupported } from './io.js';
+import { isTouchSupported, fetchImage } from './io.js';
 export function blendAlphaCopy(color0, color) {
     const alphant = color0.alphaNormal();
     const alphanc = color.alphaNormal();
@@ -226,7 +226,7 @@ export class Pair {
 }
 ;
 export class ImageContainer {
-    constructor(imageName, imagePath, callBack = (img) => console.log(imageName + " loaded.")) {
+    constructor(imageName, imagePath, callBack = (img) => console.log(imagePath + " loaded.", img)) {
         this.image = null;
         if (imagePath && imageName)
             fetchImage(imagePath).then(img => {

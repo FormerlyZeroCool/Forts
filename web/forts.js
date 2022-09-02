@@ -228,14 +228,14 @@ class Fort extends SquareAABBCollidable {
             ctx.fillRect(this.x, this.y, this.width, this.height);
         }
         ctx.font = `${this.font_size}px ${this.font_name}`;
-        //ctx.strokeStyle = "#FFFFFF";
+        ctx.strokeStyle = "#FFFFFF";
         ctx.fillStyle = "#000000";
-        //ctx.lineWidth = 3;
-        //ctx.strokeText((this.units.length + this.leaving_units.length) + "", this.mid_x() - this.width / 4, this.mid_y(), this.width / 2); 
+        ctx.lineWidth = 3;
+        ctx.strokeText((this.units.length + this.leaving_units.length) + "", this.mid_x() - this.width / 4, this.mid_y(), this.width / 2);
         ctx.fillText((this.units.length + this.leaving_units.length) + "", this.mid_x() - this.width / 4, this.mid_y(), this.width / 2);
         if (this.faction == this.faction.battleField.player_faction()) {
             ctx.font = `${this.font_size - 5}px ${this.font_name}`;
-            //ctx.strokeText("player", this.mid_x() - this.width / 4, this.mid_y() + this.font_size, this.width / 2);  
+            ctx.strokeText("player", this.mid_x() - this.width / 4, this.mid_y() + this.font_size, this.width / 2);
             ctx.fillText("player", this.mid_x() - this.width / 4, this.mid_y() + this.font_size, this.width / 2);
         }
         ctx.lineWidth = 1;

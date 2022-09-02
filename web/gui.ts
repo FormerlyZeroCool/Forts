@@ -2121,7 +2121,7 @@ export class ToolBarItem {
         }
     }
 };
-abstract export class Tool extends ToolBarItem{
+export abstract class Tool extends ToolBarItem{
     constructor(toolName:string, toolImagePath:string[])
     {
         super(toolName, toolImagePath);
@@ -2294,24 +2294,37 @@ export function buildSpriteAnimationFromBuffer(buffer:Int32Array, index:number):
 }
 export class Sprite {
     pixels:Uint8ClampedArray;
-    imageData:ImageData;
+    imageData:ImageData | null;
     image:HTMLCanvasElement;
     ctx:CanvasRenderingContext2D;
     fillBackground:boolean;
     width:number;
     height:number;
-    constructor(pixels:Array<RGB>, width:number, height:number, fillBackground:boolean = true)
+    constructor(pixels:Array<RGB>, width:number, height:number, fillBackground:boolean = false)
     {
         this.fillBackground = fillBackground;
-        this.imageData = <any> null;
-        this.pixels = <any> null;
+        this.imageData = null;
+        this.pixels = new Uint8ClampedArray(0);
         this.image = document.createElement("canvas");
         this.ctx = this.image.getContext("2d")!;
         this.width = width;
         this.height = height;
-        this.copy(pixels, width, height);
+        if(width * height > 0)
+            this.copy(pixels, width, height);
     }
-    
+    copyCanvas(canvas:HTMLCanvasElement):void
+    {
+        this.width = canvas.width;
+        this.height = canvas.height;
+        this.image.width = this.width;
+        this.image.height = this.height;
+        this.ctx = this.image.getContext("2d")!;
+        
+        this.ctx.imageSmoothingEnabled = false;
+        this.ctx.drawImage(canvas, 0, 0);
+        this.imageData = this.ctx.getImageData(0, 0, this.width, this.height);
+        this.pixels = this.imageData.data;
+    }
     createImageData():ImageData {
 
         const canvas = this.image;
@@ -2347,7 +2360,8 @@ export class Sprite {
     }
     putPixels(ctx:CanvasRenderingContext2D):void
     {
-        ctx.putImageData(this.imageData, 0, 0);
+        if(this.imageData)
+            ctx.putImageData(this.imageData, 0, 0);
     }
     fillRect(color:RGB, x:number, y:number, width:number, height:number, view:Int32Array = new Int32Array(this.pixels.buffer))
     {

@@ -1,5 +1,5 @@
 import {SingleTouchListener, MouseDownTracker, isTouchSupported, KeyboardHandler} from './io.js'
-import {SimpleGridLayoutManager, GuiTextBox, GuiButton, GuiSpacer, getHeight, getWidth, RGB} from './gui.js'
+import {SimpleGridLayoutManager, GuiTextBox, GuiButton, GuiSpacer, getHeight, getWidth, RGB, ImageContainer} from './gui.js'
 import {random, srand, max_32_bit_signed} from './utils.js'
 
 interface Attackable {
@@ -67,6 +67,7 @@ class Faction {
     name:string;
     money:number;
     color:RGB;
+    fort_avatar:ImageContainer;
     battleField:BattleField;
     //faction stats governing gameplay (upgradable)
     attack:number;
@@ -98,6 +99,7 @@ class Faction {
         this.money_production_per_second = 10;
         this.fort_reproduction_unit_limit = fort_reproduction_unit_limit;
         this.unit_travel_speed = Math.max(getWidth(), getHeight()) / 7.5;
+        this.fort_avatar = new ImageContainer(this.name, `./images/${this.name}.png`);
     }
     time_elapsed():number
     {
@@ -306,8 +308,15 @@ class Fort extends SquareAABBCollidable implements Attackable {
     }
     draw(canvas:HTMLCanvasElement, ctx:CanvasRenderingContext2D):void
     {
-        ctx.fillStyle = this.faction.color.htmlRBG();
-        ctx.fillRect(this.x, this.y, this.width, this.height);
+        if(this.faction.fort_avatar.image)
+        {
+            ctx.drawImage(this.faction.fort_avatar.image, this.x, this.y, this.width, this.height);
+        }
+        else
+        {
+            ctx.fillStyle = this.faction.color.htmlRBG();
+            ctx.fillRect(this.x, this.y, this.width, this.height);
+        }
         ctx.font = `${this.font_size}px ${this.font_name}`;
         //ctx.strokeStyle = "#FFFFFF";
         ctx.fillStyle = "#000000";
@@ -905,9 +914,9 @@ class Game {
         this.game_over = true;
         srand(6);
         // seeds 607, 197 are pretty good so far lol
-        for(let i = 0; i < 10; i++)
+        for(let i = 0; i < 4; i++)
         {
-            this.factions.push(new Faction("Faction " + i, new RGB(random() * 128 + 128, random() * 128 + 128, random() * 128 + 128), 120));
+            this.factions.push(new Faction("faction" + i, new RGB(random() * 128 + 128, random() * 128 + 128, random() * 128 + 128), 120));
         }
         this.factions[1].unit_reproduction_per_second += 0.3;
         srand(Math.random() * max_32_bit_signed);

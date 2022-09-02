@@ -1843,15 +1843,27 @@ export function buildSpriteAnimationFromBuffer(buffer, index) {
     return new Pair(animation, size);
 }
 export class Sprite {
-    constructor(pixels, width, height, fillBackground = true) {
+    constructor(pixels, width, height, fillBackground = false) {
         this.fillBackground = fillBackground;
         this.imageData = null;
-        this.pixels = null;
+        this.pixels = new Uint8ClampedArray(0);
         this.image = document.createElement("canvas");
         this.ctx = this.image.getContext("2d");
         this.width = width;
         this.height = height;
-        this.copy(pixels, width, height);
+        if (width * height > 0)
+            this.copy(pixels, width, height);
+    }
+    copyCanvas(canvas) {
+        this.width = canvas.width;
+        this.height = canvas.height;
+        this.image.width = this.width;
+        this.image.height = this.height;
+        this.ctx = this.image.getContext("2d");
+        this.ctx.imageSmoothingEnabled = false;
+        this.ctx.drawImage(canvas, 0, 0);
+        this.imageData = this.ctx.getImageData(0, 0, this.width, this.height);
+        this.pixels = this.imageData.data;
     }
     createImageData() {
         const canvas = this.image;
@@ -1880,7 +1892,8 @@ export class Sprite {
         }
     }
     putPixels(ctx) {
-        ctx.putImageData(this.imageData, 0, 0);
+        if (this.imageData)
+            ctx.putImageData(this.imageData, 0, 0);
     }
     fillRect(color, x, y, width, height, view = new Int32Array(this.pixels.buffer)) {
         for (let yi = y; yi < y + height; yi++) {

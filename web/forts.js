@@ -685,9 +685,6 @@ class Game {
         //this.factions[0].battleField = this.currentField;
         const is_player = (e) => this.currentField.find_nearest_fort(e.touchPos[0], e.touchPos[1]).faction === this.currentField.player_faction();
         this.keyboard_handler = new KeyboardHandler();
-        this.keyboard_handler.registerCallBack("keydown", (e) => { return this.keyboard_handler.keysHeld["KeyJ"]; }, (e) => {
-            this.joint_attack_mode = !this.joint_attack_mode;
-        });
         this.touch_listener = new SingleTouchListener(canvas, true, true, false);
         this.touch_listener.registerCallBack("touchstart", (e) => is_player(e), (event) => {
             this.start_touch_forts.splice(0, this.start_touch_forts.length);
@@ -723,7 +720,9 @@ class Game {
         });
         this.upgrade_menu = new UpgradeScreen(this.currentField.player_faction(), this, [canvas.width * 7 / 8, canvas.height * 1 / 2], canvas.width / 16, canvas.height / 8);
         this.upgrade_menu.refresh();
-        this.upgrade_menu.activate();
+        this.keyboard_handler.registerCallBack("keydown", (e) => { return this.keyboard_handler.keysHeld["KeyJ"]; }, (e) => {
+            this.joint_attack_mode = !this.joint_attack_mode;
+        });
     }
     is_faction_on_field(faction) {
         let counter = 0;
@@ -746,13 +745,9 @@ class Game {
             this.upgrade_ai_factions();
         if (this.is_faction_on_field(this.currentField.player_faction())) {
             this.wins++;
-            this.currentField.player_faction().wins++;
         }
         else {
             this.losses++;
-            const winner = this.find_non_null_fort_faction();
-            if (winner)
-                winner.wins++;
         }
     }
     update_state(delta_time) {
@@ -920,6 +915,7 @@ async function main() {
     drawLoop();
 }
 main();
+window.RGB = RGB;
 window.send_units = (from, to) => window.game.currentField.forts[from].send_units(window.game.currentField.forts[to]);
 //toggle hard mode  //hard mode has ai upgrade 2x for every player upgrade
 //toggle joint control mode

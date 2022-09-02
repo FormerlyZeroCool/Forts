@@ -82,7 +82,6 @@ class Faction {
     sum_move_points:number;
     count_moves:number;
 
-    wins:number;
     
     constructor(name:string, color:RGB, fort_reproduction_unit_limit:number)
     {
@@ -916,10 +915,6 @@ class Game {
         //this.factions[0].battleField = this.currentField;
         const is_player = (e:any) => this.currentField.find_nearest_fort(e.touchPos[0], e.touchPos[1]).faction === this.currentField.player_faction()
         this.keyboard_handler = new KeyboardHandler();
-        this.keyboard_handler.registerCallBack("keydown", (e:any) => {return this.keyboard_handler.keysHeld["KeyJ"]}, 
-        (e:any) =>{
-            this.joint_attack_mode = !this.joint_attack_mode;
-        });
         this.touch_listener = new SingleTouchListener(canvas, true, true, false);
         
         this.touch_listener.registerCallBack("touchstart", (e:any) => is_player(e), (event:any) => {
@@ -960,7 +955,10 @@ class Game {
         });
         this.upgrade_menu = new UpgradeScreen(this.currentField.player_faction(), this, [canvas.width * 7/8, canvas.height * 1/2], canvas.width / 16, canvas.height / 8);
         this.upgrade_menu.refresh();
-        this.upgrade_menu.activate();
+        this.keyboard_handler.registerCallBack("keydown", (e:any) => {return this.keyboard_handler.keysHeld["KeyJ"]}, 
+        (e:any) =>{
+            this.joint_attack_mode = !this.joint_attack_mode;
+        });
     }
     is_faction_on_field(faction:Faction):boolean
     {
@@ -991,14 +989,10 @@ class Game {
         if(this.is_faction_on_field(this.currentField.player_faction()))
         {
             this.wins++;
-            this.currentField.player_faction().wins++;
         }
         else
         {
             this.losses++;
-            const winner = this.find_non_null_fort_faction();
-            if(winner)
-                winner.wins++
         }
     }
     update_state(delta_time:number):void
@@ -1202,6 +1196,7 @@ async function main()
 
 }
 main();
+window.RGB = RGB;
 window.send_units = (from:number, to:number) => window.game.currentField.forts[from].send_units(window.game.currentField.forts[to])
 
 

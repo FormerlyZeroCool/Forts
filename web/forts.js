@@ -670,6 +670,7 @@ class UpgradeScreen extends SimpleGridLayoutManager {
 ;
 class Game {
     constructor(canvas) {
+        this.background = new ImageContainer("background", `./images/${"background"}.png`);
         this.dev_mode = false;
         this.joint_attack_mode = false;
         this.difficulty = 0;
@@ -775,6 +776,8 @@ class Game {
     draw(canvas, ctx) {
         ctx.clearRect(this.currentField.dimensions[0], this.currentField.dimensions[1], this.currentField.dimensions[2], this.currentField.dimensions[3]);
         if (!this.game_over) {
+            if (this.background.image)
+                ctx.drawImage(this.background.image, 0, 0, this.currentField.dimensions[2], this.currentField.dimensions[3]);
             this.currentField.draw(canvas, ctx);
             if (this.mouse_down_tracker.mouseDown && this.start_touch_forts.length && this.end_touch_fort) {
                 ctx.strokeStyle = new RGB(125, 125, 125, 125).htmlRBGA();

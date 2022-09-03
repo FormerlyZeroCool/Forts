@@ -323,7 +323,7 @@ class Fort extends SquareAABBCollidable implements Attackable {
         ctx.font = `${this.font_size}px ${this.font_name}`;
         ctx.strokeStyle = "#FFFFFF";
         ctx.fillStyle = "#000000";
-        ctx.lineWidth = 3;
+        ctx.lineWidth = 4;
         ctx.strokeText((this.units.length + this.leaving_units.length) + "", this.mid_x() - this.width / 4, this.mid_y(), this.width / 2); 
         ctx.fillText((this.units.length + this.leaving_units.length) + "", this.mid_x() - this.width / 4, this.mid_y(), this.width / 2);  
         if(this.faction == this.faction.battleField.player_faction())
@@ -923,7 +923,7 @@ class Game {
         }
         this.factions[1].unit_reproduction_per_second += 0.3;
         srand(Math.random() * max_32_bit_signed);
-        this.currentField = new BattleField(this, [0, 0, width, height], this.factions, Math.max(width, height) / 17, 10);
+        this.currentField = new BattleField(this, [0, 0, width, height], this.factions, Math.max(width, height) / (isTouchSupported() ? 13 : 17), 10);
         //this.factions[0].battleField = this.currentField;
         const is_player = (e:any) => this.currentField.find_nearest_fort(e.touchPos[0], e.touchPos[1]).faction === this.currentField.player_faction()
         this.keyboard_handler = new KeyboardHandler();

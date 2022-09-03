@@ -917,7 +917,7 @@ class Game {
         this.game_over = true;
         srand(6);
         // seeds 607, 197 are pretty good so far lol
-        for(let i = 0; i < 4; i++)
+        for(let i = 0; i < 5; i++)
         {
             this.factions.push(new Faction("faction" + i, new RGB(random() * 128 + 128, random() * 128 + 128, random() * 128 + 128), 120, true));
         }

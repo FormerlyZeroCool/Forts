@@ -114,6 +114,10 @@ class Unit extends SquareAABBCollidable {
             const norm_dx = dx / dist;
             let ndy = delta * norm_dy;
             let ndx = delta * norm_dx;
+            if (ndy * ndy > dy * dy || ndx * ndx > dx * dx) {
+                ndx = dx / 2;
+                ndy = dy / 2;
+            }
             this.y += ndy;
             this.x += ndx;
             return true;

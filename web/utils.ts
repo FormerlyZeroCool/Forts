@@ -2,6 +2,14 @@
 export interface FilesHaver{
     files:FileList;
 };
+
+export function get_angle(deltaX:number, deltaY:number, unit_vectorX:number = 1, unit_vectorY:number = 0):number
+{
+    const a:Array<number> = this.normalize([deltaX, deltaY]);
+    const b:Array<number> = [unit_vectorX, unit_vectorY];
+    const dotProduct:number = this.dotProduct(a, b);
+    return Math.acos(dotProduct)*(deltaY<0?1:-1);
+}
 export function threeByThreeMat(a:number[], b:number[]):number[]
 {
     return [a[0]*b[0]+a[1]*b[3]+a[2]*b[6], 

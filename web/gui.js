@@ -235,6 +235,17 @@ export class ImageContainer {
             });
         this.name = imageName;
     }
+    hflip() {
+        if (this.image) {
+            const outputImage = document.createElement('canvas');
+            outputImage.width = this.image.width;
+            outputImage.height = this.image.height;
+            const ctx = outputImage.getContext('2d');
+            ctx.scale(-1, 1);
+            ctx.drawImage(this.image, -outputImage.width, 0);
+            this.image = outputImage;
+        }
+    }
 }
 ;
 ;
@@ -1878,6 +1889,35 @@ export class Sprite {
         this.ctx = this.image.getContext("2d");
         this.ctx.imageSmoothingEnabled = false;
         this.ctx.drawImage(canvas, 0, 0);
+        this.imageData = this.ctx.getImageData(0, 0, this.width, this.height);
+        this.pixels = this.imageData.data;
+    }
+    flipHorizontally() {
+        let left = new RGB(0, 0, 0, 0);
+        let right = new RGB(0, 0, 0, 0);
+        for (let y = 0; y < this.height; y++) {
+            const yOffset = y * this.width;
+            for (let x = 0; x < this.width << 1; x++) {
+                left.color = this.pixels[x + yOffset];
+                right.color = this.pixels[yOffset + (this.width - 1) - x];
+                if (left && right) {
+                    const temp = left.color;
+                    left.copy(right);
+                    right.color = temp;
+                }
+            }
+        }
+        this.refreshImage();
+    }
+    copyImage(image) {
+        console.log(image.width, image.height);
+        this.width = image.width;
+        this.height = image.height;
+        this.image.width = this.width;
+        this.image.height = this.height;
+        this.ctx = this.image.getContext("2d");
+        this.ctx.imageSmoothingEnabled = false;
+        this.ctx.drawImage(image, 0, 0);
         this.imageData = this.ctx.getImageData(0, 0, this.width, this.height);
         this.pixels = this.imageData.data;
     }

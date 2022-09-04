@@ -60,6 +60,7 @@ class Faction {
         if (load_image) {
             this.fort_avatar = new ImageContainer(this.name, `./images/${this.name}.png`);
             this.unit_avatar = new ImageContainer(this.name + "_unit", `./images/${this.name}unit.png`);
+            this.flipped_unit_avatar = new ImageContainer(this.name + "_unit", `./images/${this.name}unitFlipped.png`);
         }
         else {
             this.fort_avatar = new ImageContainer(this.name, null);
@@ -91,7 +92,12 @@ class Unit extends SquareAABBCollidable {
     }
     draw(canvas, ctx) {
         if (this.render && this.faction.unit_avatar.image) {
-            ctx.drawImage(this.faction.unit_avatar.image, this.mid_x(), this.mid_y(), this.width, this.height);
+            if (this.targetFort.x - this.x > 0) {
+                ctx.drawImage(this.faction.unit_avatar.image, this.mid_x(), this.mid_y(), this.width, this.height);
+            }
+            else if (this.faction.flipped_unit_avatar.image) {
+                ctx.drawImage(this.faction.flipped_unit_avatar.image, this.mid_x(), this.mid_y(), this.width, this.height);
+            }
         }
     }
     update_state(delta_time) {

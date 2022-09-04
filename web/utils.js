@@ -1,4 +1,10 @@
 ;
+export function get_angle(deltaX, deltaY, unit_vectorX = 1, unit_vectorY = 0) {
+    const a = this.normalize([deltaX, deltaY]);
+    const b = [unit_vectorX, unit_vectorY];
+    const dotProduct = this.dotProduct(a, b);
+    return Math.acos(dotProduct) * (deltaY < 0 ? 1 : -1);
+}
 export function threeByThreeMat(a, b) {
     return [a[0] * b[0] + a[1] * b[3] + a[2] * b[6],
         a[0] * b[1] + a[1] * b[4] + a[2] * b[7],

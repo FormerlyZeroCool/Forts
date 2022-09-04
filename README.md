@@ -5,8 +5,8 @@
 </h2>
 
 <h3>The Story</h3>
-The Diamondians have for thousands of years lived peacefully with humankind in the shadows.<br>
+The Apatao have for millions of years existed on their home planet Apatite.<br>
 They have long held great esteem for all the beings on Earth, and every planet they cohabitate with the native species<br>
-War, famine, and disease have never affected them before, but humans recently began using their Diamond bodies to make jewelry, and have been poaching them for it.<br>
+War, famine, and disease have never affected them before, but humans recently began using their bodies to make jewelry, and the Apatao are nto havin it!<br>
 <br>
-Now the Diamondians must learn how to defend themselves against the humans who would rather see them as jewelry than as neighbors.
+Now the Apatao have learned they need to defend themselves, but can they destroy all human forts, and keep their lives?

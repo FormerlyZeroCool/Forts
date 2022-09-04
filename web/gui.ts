@@ -270,7 +270,7 @@ export class Pair<T,U = T> {
     }
 };
 export class ImageContainer {
-    image:HTMLImageElement | null;
+    image:HTMLImageElement | HTMLCanvasElement | null;
     name:string;
     constructor(imageName:string, imagePath:string, callBack:((image:HTMLImageElement) => void) = (img) => console.log(imagePath + " loaded.", img))
     {
@@ -281,6 +281,23 @@ export class ImageContainer {
             callBack(img);
         });
         this.name = imageName;
+    }
+    hflip():void
+    {
+        if(this.image)
+        {
+            const outputImage = document.createElement('canvas');
+
+            outputImage.width = this.image.width;
+            outputImage.height = this.image.height;
+            
+            const ctx = outputImage.getContext('2d')!;
+            ctx.scale(-1, 1);
+
+            ctx.drawImage(this.image, -outputImage.width, 0);
+            this.image = outputImage;
+        }
+
     }
 };
 export interface GuiElement {
@@ -2343,6 +2360,42 @@ export class Sprite {
         
         this.ctx.imageSmoothingEnabled = false;
         this.ctx.drawImage(canvas, 0, 0);
+        this.imageData = this.ctx.getImageData(0, 0, this.width, this.height);
+        this.pixels = this.imageData.data;
+    }
+    flipHorizontally(): void
+    {
+        
+        let left:RGB = new RGB(0,0,0,0);
+        let right:RGB = new RGB(0,0,0,0);
+        for(let y = 0; y < this.height; y++)
+        {
+            const yOffset:number = y * this.width;
+            for(let x = 0; x < this.width << 1; x++)
+            {
+                left.color = this.pixels[x + yOffset];
+                right.color = this.pixels[yOffset + (this.width - 1) - x];
+                if(left && right)
+                {
+                    const temp:number = left.color;
+                    left.copy(right);
+                    right.color = temp;
+                }
+            }
+        }
+        this.refreshImage(); 
+    }
+    copyImage(image:HTMLImageElement):void
+    {
+        console.log(image.width, image.height)
+        this.width = image.width;
+        this.height = image.height;
+        this.image.width = this.width;
+        this.image.height = this.height;
+        this.ctx = this.image.getContext("2d")!;
+        
+        this.ctx.imageSmoothingEnabled = false;
+        this.ctx.drawImage(image, 0, 0);
         this.imageData = this.ctx.getImageData(0, 0, this.width, this.height);
         this.pixels = this.imageData.data;
     }

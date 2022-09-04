@@ -224,29 +224,39 @@ class Fort extends SquareAABBCollidable {
         }
     }
     draw(canvas, ctx) {
-        if (this.faction.fort_avatar.image) {
-            ctx.drawImage(this.faction.fort_avatar.image, this.x, this.y, this.width, this.height);
-        }
-        else {
-            ctx.fillStyle = this.faction.color.htmlRBG();
-            ctx.fillRect(this.x, this.y, this.width, this.height);
-        }
         ctx.font = `${this.font_size}px ${this.font_name}`;
         ctx.strokeStyle = "#FFFFFF";
         ctx.fillStyle = "#000000";
         ctx.lineWidth = 4;
+        if (this.faction !== this.faction.battleField.factions[0]) {
+            if (this.faction.fort_avatar.image) {
+                ctx.drawImage(this.faction.fort_avatar.image, this.x, this.y, this.width, this.height);
+            }
+            else {
+                ctx.fillStyle = this.faction.color.htmlRBG();
+                ctx.fillRect(this.x, this.y, this.width, this.height);
+            }
+            if (this.faction == this.faction.battleField.player_faction()) {
+                ctx.font = `${this.font_size - 5}px ${this.font_name}`;
+                ctx.strokeText("player", this.mid_x() - this.width / 4, this.mid_y() + this.font_size, this.width / 2);
+                ctx.fillText("player", this.mid_x() - this.width / 4, this.mid_y() + this.font_size, this.width / 2);
+            }
+            if (this.faction.battleField.game.dev_mode) {
+                ctx.fillText(this.faction.battleField.forts.indexOf(this) + ":", this.x, this.y, this.width / 2);
+                ctx.fillText(this.faction.battleField.factions.indexOf(this.faction) + "", this.x + this.width / 2, this.y, this.width / 2);
+            }
+        }
+        else {
+            ctx.strokeStyle = "#000000";
+            ctx.beginPath();
+            ctx.moveTo(this.mid_x() + this.width / 2, this.mid_y());
+            ctx.arc(this.mid_x(), this.mid_y(), this.width / 2, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.strokeStyle = "#FFFFFF";
+        }
         ctx.strokeText((this.units.length + this.leaving_units.length) + "", this.mid_x() - this.width / 4, this.mid_y(), this.width / 2);
         ctx.fillText((this.units.length + this.leaving_units.length) + "", this.mid_x() - this.width / 4, this.mid_y(), this.width / 2);
-        if (this.faction == this.faction.battleField.player_faction()) {
-            ctx.font = `${this.font_size - 5}px ${this.font_name}`;
-            ctx.strokeText("player", this.mid_x() - this.width / 4, this.mid_y() + this.font_size, this.width / 2);
-            ctx.fillText("player", this.mid_x() - this.width / 4, this.mid_y() + this.font_size, this.width / 2);
-        }
         ctx.lineWidth = 1;
-        if (this.faction.battleField.game.dev_mode) {
-            ctx.fillText(this.faction.battleField.forts.indexOf(this) + ":", this.x, this.y, this.width / 2);
-            ctx.fillText(this.faction.battleField.factions.indexOf(this.faction) + "", this.x + this.width / 2, this.y, this.width / 2);
-        }
     }
     get_faction() {
         return this.faction;
@@ -707,6 +717,8 @@ class Game {
         this.game_start = Date.now();
         this.mouse_down_tracker = new MouseDownTracker();
         this.factions.push(new Faction("none", new RGB(125, 125, 125), 20));
+        this.factions[0].attack = 2;
+        this.factions[0].unit_reproduction_per_second = 1;
         this.game_over = true;
         srand(6);
         // seeds 607, 197 are pretty good so far lol
@@ -757,6 +769,8 @@ class Game {
         this.keyboard_handler.registerCallBack("keydown", (e) => { return this.keyboard_handler.keysHeld["KeyJ"]; }, (e) => {
             this.joint_attack_mode = !this.joint_attack_mode;
         });
+        this.currentField.update_state(1);
+        window.addEventListener("load", () => setTimeout(() => this.currentField.draw(canvas, canvas.getContext("2d")), 250));
     }
     is_faction_on_field(faction) {
         let counter = 0;

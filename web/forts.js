@@ -409,16 +409,10 @@ class BattleField {
         }
         this.forts.forEach(fort => fort.draw(this.canvas, this.ctx));
         ctx.strokeStyle = "#000000";
-        if (this.traveling_units.length < 1000)
-            for (let i = 0; i < this.traveling_units.length; i++) {
-                const unit = this.traveling_units[i];
-                unit.draw(this.canvas, this.ctx);
-            }
-        else
-            for (let i = 0; i < this.traveling_units.length; i += 3) {
-                const unit = this.traveling_units[i];
-                unit.draw(this.canvas, this.ctx);
-            }
+        for (let i = 0; i < this.traveling_units.length; i++) {
+            const unit = this.traveling_units[i];
+            unit.draw(this.canvas, this.ctx);
+        }
         ctx.drawImage(this.canvas, this.dimensions[0], this.dimensions[1]);
     }
     handleAI(delta_time) {
@@ -520,6 +514,8 @@ class BattleField {
                         if (other.faction !== unit.faction) {
                             unit.attack(other);
                             other.attack(unit);
+                            other.render = true;
+                            unit.render = true;
                             if (other.hp <= 0)
                                 this.traveling_units.splice(j, 1);
                             if (unit.hp <= 0) {
@@ -527,11 +523,11 @@ class BattleField {
                                 break;
                             }
                         }
-                        else //they are of the same faction
+                        else if (unit.render === true && other.render === true) //they are of the same faction, and are being rendered
                          {
                             if (unit.targetFort === other.targetFort && distance(unit, other) < unit.width * 0.5) {
-                                //if(unit.render && other.render)
-                                //  other.render = false;
+                                unit.render = false;
+                                other.render = true;
                             }
                         }
                     }

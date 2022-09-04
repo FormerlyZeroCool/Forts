@@ -568,6 +568,7 @@ class BattleField {
     }
     draw(canvas:HTMLCanvasElement, ctx:CanvasRenderingContext2D):void
     {
+        this.ctx.imageSmoothingEnabled = false;
         this.ctx.clearRect(0, 0, canvas.width, canvas.height);
         if(this.game.background.image)
         {

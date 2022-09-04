@@ -417,6 +417,7 @@ class BattleField {
         return this.factions[this.player_faction_index];
     }
     draw(canvas, ctx) {
+        this.ctx.imageSmoothingEnabled = false;
         this.ctx.clearRect(0, 0, canvas.width, canvas.height);
         if (this.game.background.image) {
             const image = this.game.background.image;

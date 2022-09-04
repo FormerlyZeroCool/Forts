@@ -957,6 +957,10 @@ export class GuiButton {
     }
     draw(ctx, x, y, offsetX = 0, offsetY = 0) {
         ctx.drawImage(this.canvas, x + offsetX, y + offsetY);
+        if (!this.active()) {
+            ctx.fillStyle = new RGB(0, 0, 0, 125).htmlRBGA();
+            ctx.fillRect(x, y, this.width(), this.height());
+        }
     }
 }
 ;

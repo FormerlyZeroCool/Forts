@@ -1209,6 +1209,11 @@ export class GuiButton implements GuiElement {
     draw(ctx:CanvasRenderingContext2D, x:number, y:number, offsetX:number = 0, offsetY:number = 0):void
     {
         ctx.drawImage(this.canvas, x + offsetX, y + offsetY);
+        if(!this.active())
+        {
+            ctx.fillStyle = new RGB(0, 0, 0, 125).htmlRBGA();
+            ctx.fillRect(x, y, this.width(), this.height());
+        }
     }
 };
 export class GuiCheckBox implements GuiElement {

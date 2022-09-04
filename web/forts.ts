@@ -825,7 +825,7 @@ class UpgradePanel extends SimpleGridLayoutManager {
         this.increment_attribute();
         this.display_value.text = this.get_value() + "";
         this.display_value.refresh();
-        this.frame.game.maybe_new_game();
+        this.frame.game.maybe_new_upgrade();
     }
     update_display_value():void
     {
@@ -851,6 +851,7 @@ class UpgradePanel extends SimpleGridLayoutManager {
 class UpgradeScreen extends SimpleGridLayoutManager {
     faction:Faction;
     upgrade_panels:UpgradePanel[];
+    play_group:UpgradePanel;
     game:Game;
     constructor(faction:Faction, game:Game, pixelDim:number[], x:number, y:number)
     {
@@ -902,21 +903,23 @@ class UpgradeScreen extends SimpleGridLayoutManager {
     {
         const level_toggle = new UpgradePanel((x:number) => pixelDim[1] / 100, this, "null", "Levels", [panel_width, panel_height], 0, 0, () => game.difficulty + "",
         () => {game.difficulty = (game.difficulty + 1) % 10; 
-            level_toggle.update_display_value();} );
+            level_toggle.update_display_value();
+            level_toggle.activate();} );
         
         this.addElement(level_toggle);
         this.upgrade_panels.push(level_toggle);
     }
     {
-        const upgrades = new UpgradePanel((x:number) => pixelDim[1] / 100, this, "null", "Skip", [panel_width, panel_height], 0, 0, () => "Skip Leveling");
+        const upgrades = new UpgradePanel((x:number) => pixelDim[1] / 100, this, "null", "Play!", [panel_width, panel_height], 0, 0, () => "Play Game!", () => this.game.new_game());
         upgrades.increase_function = null;
+        this.play_group = upgrades;
         this.addElement(upgrades);
         this.upgrade_panels.push(upgrades);
     }
 
     {
         const joint_move_toggle = new UpgradePanel((x:number) => pixelDim[1] / 100, this, "null", "Joint Moves", [panel_width, panel_height], 0, 0, () => game.joint_attack_mode + "",
-        () => {game.joint_attack_mode = !game.joint_attack_mode; joint_move_toggle.update_display_value();});
+        () => {game.joint_attack_mode = !game.joint_attack_mode; joint_move_toggle.update_display_value(); joint_move_toggle.activate()});
         
         this.addElement(joint_move_toggle);
         this.upgrade_panels.push(joint_move_toggle);
@@ -1198,6 +1201,21 @@ class Game {
         }
         if(pfc + nfc === this.currentField.forts.length && sum === 0)
             return true;
+        return false;
+    }
+    maybe_new_upgrade():boolean
+    {
+        if(random() < 0.66)
+        {
+            this.upgrade_menu.activate();
+            return true;
+        }
+        let i = 3;
+        for(; i < this.upgrade_menu.elements.length - 3; i++)
+        {
+            const el = this.upgrade_menu.elements[i];
+            el.deactivate();
+        }
         return false;
     }
     maybe_new_game():boolean

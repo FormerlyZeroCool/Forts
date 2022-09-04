@@ -967,8 +967,8 @@ export class GuiButton {
             ctx.fillText(this.text, this.width() / 2 - textWidth / 2, this.height() / 2 + textHeight / 2, this.width());
         }
         else {
-            ctx.strokeText(this.text, 0, this.height() / 2 + textHeight / 2, this.width());
-            ctx.fillText(this.text, 0, this.height() / 2 + textHeight / 2, this.width());
+            ctx.strokeText(this.text, 10, this.height() / 2 + textHeight / 2, this.width() - 20);
+            ctx.fillText(this.text, 10, this.height() / 2 + textHeight / 2, this.width() - 20);
         }
         ctx.fillStyle = fs;
     }
@@ -1506,10 +1506,9 @@ GuiTextBox.numbers = {};
 GuiTextBox.specialChars = {};
 GuiTextBox.textBoxRunningNumber = 0;
 ;
-export class GuiLabel extends GuiTextBox {
-    constructor(text, width, fontSize = 16, flags = GuiTextBox.bottom, height = 2 * fontSize, backgroundColor = new RGB(255, 255, 255, 0)) {
-        super(false, width, null, fontSize, height, flags, null, backgroundColor, backgroundColor, false);
-        this.setText(text);
+export class GuiLabel extends GuiButton {
+    constructor(text, width, fontSize = 16, height = 2 * fontSize) {
+        super(() => { }, text, width, height, fontSize);
     }
     //override the textbox's handlers
     handleKeyBoardEvents(type, e) { }

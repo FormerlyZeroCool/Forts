@@ -1226,8 +1226,8 @@ export class GuiButton implements GuiElement {
         }
         else
         {
-            ctx.strokeText(this.text, 0, this.height() / 2 + textHeight / 2, this.width());
-            ctx.fillText(this.text, 0, this.height() / 2 + textHeight / 2, this.width());
+            ctx.strokeText(this.text, 10, this.height() / 2 + textHeight / 2, this.width() - 20);
+            ctx.fillText(this.text, 10, this.height() / 2 + textHeight / 2, this.width() - 20);
         }
         ctx.fillStyle = fs;
     } 
@@ -1890,12 +1890,10 @@ export class GuiTextBox implements GuiElement {
         ctx.drawImage(this.canvas, x + offsetX, y + offsetY);
     }
 };
-export class GuiLabel extends GuiTextBox {
-    constructor(text:string, width:number, fontSize:number = 16, flags:number = GuiTextBox.bottom, height:number = 2*fontSize, 
-        backgroundColor:RGB = new RGB(255, 255, 255, 0))
+export class GuiLabel extends GuiButton {
+    constructor(text:string, width:number, fontSize:number = 16, height:number = 2*fontSize)
     {
-        super(false, width, null, fontSize, height, flags, null, backgroundColor, backgroundColor, false);
-        this.setText(text);
+        super(() => {}, text, width, height, fontSize);
     }
     //override the textbox's handlers
     handleKeyBoardEvents(type:string, e:any):void {}

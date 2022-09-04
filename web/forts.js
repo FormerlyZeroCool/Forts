@@ -37,6 +37,11 @@ function distance(a, b) {
     const dy = a.mid_y() - b.mid_y();
     return Math.sqrt(dx * dx + dy * dy);
 }
+function manhattan_distance(a, b) {
+    const dx = Math.abs(a.mid_x() - b.mid_x());
+    const dy = Math.abs(a.mid_y() - b.mid_y());
+    return dx + dy;
+}
 class Faction {
     constructor(name, color, fort_reproduction_unit_limit, load_image = false) {
         this.name = name;
@@ -109,10 +114,6 @@ class Unit extends SquareAABBCollidable {
             const norm_dx = dx / dist;
             let ndy = delta * norm_dy;
             let ndx = delta * norm_dx;
-            if (ndy * ndy > dy * dy || ndx * ndx > dx * dx) {
-                ndx = dx / 2;
-                ndy = dy / 2;
-            }
             this.y += ndy;
             this.x += ndx;
             return true;
@@ -191,7 +192,7 @@ class Fort extends SquareAABBCollidable {
             this.last_update_unit_reproduction = Date.now();
         }
         //send out leaving units
-        if (Date.now() - this.last_update_units_leaving > 100) {
+        if (Date.now() - this.last_update_units_leaving > 100 && this.faction.battleField.traveling_units.length < 5000) {
             const limit = Math.min(3, this.leaving_units.length);
             for (let i = 0; i < limit; i++) {
                 const unit = this.leaving_units.pop();
@@ -525,7 +526,7 @@ class BattleField {
                         }
                         else if (unit.render === true && other.render === true) //they are of the same faction, and are being rendered
                          {
-                            if (unit.targetFort === other.targetFort && distance(unit, other) < unit.width * 0.5) {
+                            if (unit.targetFort === other.targetFort && manhattan_distance(unit, other) < unit.width * 0.5) {
                                 unit.render = false;
                                 other.render = true;
                             }
@@ -939,9 +940,13 @@ async function main() {
     window.player_faction = game_local.currentField.player_faction();
     window.factions = window.game.factions;
     let start = Date.now();
+    let dt = 1;
     const drawLoop = () => {
-        game_local.update_state(Date.now() - start);
+        dt += Date.now() - start;
+        start = Date.now();
+        game_local.update_state(dt);
         game_local.draw(canvas, ctx);
+        dt = Date.now() - start;
         start = Date.now();
         requestAnimationFrame(drawLoop);
     };

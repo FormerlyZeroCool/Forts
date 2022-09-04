@@ -139,7 +139,8 @@ class Unit extends SquareAABBCollidable implements Attackable {
     render:boolean;
     constructor(faction:Faction, fort:Fort, x:number, y:number)
     {
-        super(x, y, Math.ceil(faction.battleField.fort_dim / 3), Math.ceil(faction.battleField.fort_dim / 3));
+        const divisor = isTouchSupported() ? 3 : 2;
+        super(x, y, Math.ceil(faction.battleField.fort_dim / divisor), Math.ceil(faction.battleField.fort_dim / divisor));
         this.faction = faction;
         this.hp = faction.starting_unit_hp;
         this.currentFort = fort;
@@ -150,7 +151,7 @@ class Unit extends SquareAABBCollidable implements Attackable {
     {
         if(this.render && this.faction.unit_avatar.image)
         {
-            ctx.drawImage(this.faction.unit_avatar.image, this.mid_x(), this.mid_y());
+            ctx.drawImage(this.faction.unit_avatar.image, this.mid_x(), this.mid_y(), this.width, this.height);
         }
     }
     update_state(delta_time:number):boolean

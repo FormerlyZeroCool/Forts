@@ -81,7 +81,7 @@ class Faction {
 ;
 class Unit extends SquareAABBCollidable {
     constructor(faction, fort, x, y) {
-        const divisor = 3;
+        const divisor = 4;
         super(x, y, Math.ceil(faction.battleField.fort_dim / divisor), Math.ceil(faction.battleField.fort_dim / divisor));
         this.faction = faction;
         this.hp = faction.starting_unit_hp;
@@ -501,7 +501,7 @@ class BattleField {
                     record.fort.faction.sum_move_points += max_points;
                     record.fort.faction.count_moves++;
                     record.fort.faction.avg_move_value = record.fort.faction.sum_move_points / record.fort.faction.count_moves;
-                    if (max_points > 10) {
+                    if (max_points > 10 && record.fort !== records[max_index].fort) {
                         record.fort.auto_send_units(records[max_index].fort);
                     }
                     if (record.fort.faction.avg_move_value > 1550) {

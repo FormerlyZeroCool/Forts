@@ -510,7 +510,7 @@ class BattleField {
                         record.fort.faction.avg_move_value = 650;
                     }
                 }
-                else if (record.fort.units.length >= record.fort.faction.fort_reproduction_unit_limit) {
+                else if (record.fort.units.length >= record.fort.faction.fort_reproduction_unit_limit && record.fort !== records[max_index].fort) {
                     //if(max_points > 100)
                     {
                         record.fort.auto_send_units(records[max_index].fort);

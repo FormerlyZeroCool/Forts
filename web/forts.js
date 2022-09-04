@@ -72,22 +72,25 @@ class Faction {
 ;
 class Unit extends SquareAABBCollidable {
     constructor(faction, fort, x, y) {
-        super(x, y, Math.ceil(faction.battleField.fort_dim / 6), Math.ceil(faction.battleField.fort_dim / 6));
+        super(x, y, Math.ceil(faction.battleField.fort_dim / 8), Math.ceil(faction.battleField.fort_dim / 8));
         this.faction = faction;
         this.hp = faction.starting_unit_hp;
         this.currentFort = fort;
         this.targetFort = fort;
+        this.render = true;
     }
     draw(canvas, ctx) {
-        ctx.fillStyle = this.faction.color.htmlRBG();
-        ctx.fillRect(Math.round(this.x), Math.round(this.y), this.width, this.height);
-        ctx.strokeStyle = "#000000";
-        ctx.strokeRect(Math.round(this.x), Math.round(this.y), this.width, this.height);
+        if (this.render) {
+            ctx.fillStyle = this.faction.color.htmlRBG();
+            ctx.fillRect(Math.round(this.x), Math.round(this.y), this.width, this.height);
+            ctx.strokeRect(Math.round(this.x), Math.round(this.y), this.width, this.height);
+        }
     }
     update_state(delta_time) {
         if (distance(this, this.targetFort) < Math.floor(this.targetFort.width / 2)) {
             if (this.targetFort.faction === this.faction) {
                 this.targetFort.units.push(this);
+                this.render = true;
                 this.currentFort = this.targetFort;
                 return false;
             }
@@ -397,8 +400,19 @@ class BattleField {
     }
     draw(canvas, ctx) {
         this.ctx.clearRect(0, 0, canvas.width, canvas.height);
+        if (this.game.background.image) {
+            const image = this.game.background.image;
+            const sq_dim = Math.min(image.width, image.height);
+            const mag = Math.sqrt(this.dimensions[2] * this.dimensions[2] + this.dimensions[3] * this.dimensions[3]);
+            const norm = [this.dimensions[2] / mag, this.dimensions[3] / mag];
+            this.ctx.drawImage(image, 0, 0, sq_dim * norm[0], sq_dim * norm[1], 0, 0, this.dimensions[2], this.dimensions[3]);
+        }
         this.forts.forEach(fort => fort.draw(this.canvas, this.ctx));
-        this.traveling_units.forEach(unit => unit.draw(this.canvas, this.ctx));
+        ctx.strokeStyle = "#000000";
+        for (let i = 0; i < this.traveling_units.length; i++) {
+            const unit = this.traveling_units[i];
+            unit.draw(this.canvas, this.ctx);
+        }
         ctx.drawImage(this.canvas, this.dimensions[0], this.dimensions[1]);
     }
     handleAI(delta_time) {
@@ -493,20 +507,27 @@ class BattleField {
             if (!unit.update_state(delta_time)) {
                 this.traveling_units.splice(i, 1);
             }
-            for (let j = 0; j < this.traveling_units.length; j++) {
-                const other = this.traveling_units[j];
-                if (unit.check_collision(other)) {
-                    if (other.faction !== unit.faction) {
-                        unit.attack(other);
-                        other.attack(unit);
-                        if (other.hp <= 0)
-                            this.traveling_units.splice(j, 1);
-                        if (unit.hp <= 0) {
-                            this.traveling_units.splice(i, 1);
-                            break;
+            else {
+                for (let j = 0; j < this.traveling_units.length; j++) {
+                    const other = this.traveling_units[j];
+                    if (unit.check_collision(other)) {
+                        if (other.faction !== unit.faction) {
+                            unit.attack(other);
+                            other.attack(unit);
+                            if (other.hp <= 0)
+                                this.traveling_units.splice(j, 1);
+                            if (unit.hp <= 0) {
+                                this.traveling_units.splice(i, 1);
+                                break;
+                            }
                         }
-                    }
-                    else {
+                        else //they are of the same faction
+                         {
+                            if (unit.targetFort === other.targetFort && distance(unit, other) < unit.width * 0.5) {
+                                //if(unit.render && other.render)
+                                //  other.render = false;
+                            }
+                        }
                     }
                 }
             }
@@ -691,7 +712,7 @@ class Game {
         }
         this.factions[1].unit_reproduction_per_second += 0.3;
         srand(Math.random() * max_32_bit_signed);
-        this.currentField = new BattleField(this, [0, 0, width, height], this.factions, Math.max(width, height) / (isTouchSupported() ? 13 : 17), 10);
+        this.currentField = new BattleField(this, [0, 0, width, height], this.factions, Math.max(width, height) / (isTouchSupported() ? 11 : 15), 10);
         //this.factions[0].battleField = this.currentField;
         const is_player = (e) => this.currentField.find_nearest_fort(e.touchPos[0], e.touchPos[1]).faction === this.currentField.player_faction();
         this.keyboard_handler = new KeyboardHandler();
@@ -776,8 +797,6 @@ class Game {
     draw(canvas, ctx) {
         ctx.clearRect(this.currentField.dimensions[0], this.currentField.dimensions[1], this.currentField.dimensions[2], this.currentField.dimensions[3]);
         if (!this.game_over) {
-            if (this.background.image)
-                ctx.drawImage(this.background.image, 0, 0, this.currentField.dimensions[2], this.currentField.dimensions[3]);
             this.currentField.draw(canvas, ctx);
             if (this.mouse_down_tracker.mouseDown && this.start_touch_forts.length && this.end_touch_fort) {
                 ctx.strokeStyle = new RGB(125, 125, 125, 125).htmlRBGA();

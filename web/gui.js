@@ -951,8 +951,14 @@ export class GuiButton {
         const textHeight = this.fontSize;
         ctx.strokeStyle = "#FFFFFF";
         ctx.lineWidth = 4;
-        ctx.strokeText(this.text, this.width() / 2 - textWidth / 2, this.height() / 2 + textHeight / 2, this.width());
-        ctx.fillText(this.text, this.width() / 2 - textWidth / 2, this.height() / 2 + textHeight / 2, this.width());
+        if (textWidth < this.width()) {
+            ctx.strokeText(this.text, this.width() / 2 - textWidth / 2, this.height() / 2 + textHeight / 2, this.width());
+            ctx.fillText(this.text, this.width() / 2 - textWidth / 2, this.height() / 2 + textHeight / 2, this.width());
+        }
+        else {
+            ctx.strokeText(this.text, 0, this.height() / 2 + textHeight / 2, this.width());
+            ctx.fillText(this.text, 0, this.height() / 2 + textHeight / 2, this.width());
+        }
         ctx.fillStyle = fs;
     }
     draw(ctx, x, y, offsetX = 0, offsetY = 0) {
@@ -1429,8 +1435,14 @@ export class GuiTextBox {
     drawRows(rows) {
         rows.forEach(row => {
             this.ctx.lineWidth = 4;
-            this.ctx.strokeText(row.text, row.x, row.y, row.width);
-            this.ctx.fillText(row.text, row.x, row.y, row.width);
+            if (row.width > this.width()) {
+                this.ctx.strokeText(row.text, 0, row.y, this.width());
+                this.ctx.fillText(row.text, 0, row.y, this.width());
+            }
+            else {
+                this.ctx.strokeText(row.text, row.x, row.y, row.width);
+                this.ctx.fillText(row.text, row.x, row.y, row.width);
+            }
         });
     }
     drawCursor() {

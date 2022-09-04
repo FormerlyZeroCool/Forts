@@ -655,11 +655,11 @@ class UpgradeScreen extends SimpleGridLayoutManager {
         const panel_height = pixelDim[1] / 3;
         const panel_width = Math.floor(pixelDim[0] / 3);
         const header_height = 96 + 12;
-        const header_label = new GuiButton(() => { }, "Forts", panel_width, header_height, 96);
+        const header_label = new GuiButton(() => { }, "Forts", panel_width * 2, header_height, 96);
         header_label.unPressedColor = new RGB(255, 255, 255, 100);
-        this.addElement(new GuiSpacer([panel_width, header_height]));
+        this.addElement(new GuiSpacer([panel_width / 2, header_height]));
         this.addElement(header_label);
-        this.addElement(new GuiSpacer([panel_width, header_height]));
+        this.addElement(new GuiSpacer([panel_width / 2, header_height]));
         //this.setHeight();
         const attack = new UpgradePanel((x) => 0.3, this, "attack", "Attack", [panel_width, panel_height], 0, 0);
         this.addElement(attack);

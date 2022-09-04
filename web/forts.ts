@@ -139,7 +139,7 @@ class Unit extends SquareAABBCollidable implements Attackable {
     render:boolean;
     constructor(faction:Faction, fort:Fort, x:number, y:number)
     {
-        const divisor = isTouchSupported() ? 3 : 2;
+        const divisor = 3;
         super(x, y, Math.ceil(faction.battleField.fort_dim / divisor), Math.ceil(faction.battleField.fort_dim / divisor));
         this.faction = faction;
         this.hp = faction.starting_unit_hp;

@@ -81,7 +81,7 @@ class Faction {
 ;
 class Unit extends SquareAABBCollidable {
     constructor(faction, fort, x, y) {
-        const divisor = isTouchSupported() ? 3 : 2;
+        const divisor = 3;
         super(x, y, Math.ceil(faction.battleField.fort_dim / divisor), Math.ceil(faction.battleField.fort_dim / divisor));
         this.faction = faction;
         this.hp = faction.starting_unit_hp;

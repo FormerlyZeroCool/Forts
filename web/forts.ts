@@ -177,8 +177,8 @@ class Unit extends SquareAABBCollidable implements Attackable {
             let ndy = delta * norm_dy;
             let ndx = delta * norm_dx;
             if (ndy * ndy > dy * dy || ndx * ndx > dx * dx) {
-                ndx = dx / 2;
-                ndy = dy / 2;
+                ndx = dx;
+                ndy = dy;
             }
             this.y += ndy;
             this.x += ndx;

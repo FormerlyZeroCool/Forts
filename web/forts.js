@@ -63,7 +63,7 @@ class Faction {
             this.flipped_unit_avatar = new ImageContainer(this.name + "_unit", `./images/${this.name}unitFlipped.png`);
         }
         else {
-            this.fort_avatar = new ImageContainer(this.name, null);
+            this.fort_avatar = new ImageContainer(this.name, `./images/${"factionNeutral"}.png`);
             this.unit_avatar = new ImageContainer(this.name + "_unit", null);
         }
     }
@@ -260,12 +260,9 @@ class Fort extends SquareAABBCollidable {
             }
         }
         else {
-            ctx.strokeStyle = "#000000";
-            ctx.beginPath();
-            ctx.moveTo(this.mid_x() + this.width / 2, this.mid_y());
-            ctx.arc(this.mid_x(), this.mid_y(), this.width / 2, 0, Math.PI * 2);
-            ctx.stroke();
-            ctx.strokeStyle = "#FFFFFF";
+            if (this.faction.fort_avatar.image) {
+                ctx.drawImage(this.faction.fort_avatar.image, this.x, this.y, this.width, this.height);
+            }
         }
         ctx.strokeText((this.units.length + this.leaving_units.length) + "", this.mid_x() - this.width / 4, this.mid_y(), this.width / 2);
         ctx.fillText((this.units.length + this.leaving_units.length) + "", this.mid_x() - this.width / 4, this.mid_y(), this.width / 2);
@@ -548,7 +545,7 @@ class BattleField {
                                 break;
                             }
                         }
-                        else if (unit.render === true && other.render === true) //they are of the same faction, and are being rendered
+                        else if (this.traveling_units.length > 600 && unit.render === true && other.render === true) //they are of the same faction, and are being rendered
                          {
                             if (unit.targetFort === other.targetFort && manhattan_distance(unit, other) < unit.width * 0.5) {
                                 unit.render = false;

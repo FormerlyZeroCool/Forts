@@ -74,6 +74,7 @@ class Faction {
     money:number;
     color:RGB;
     fort_avatar:ImageContainer;
+    unit_avatar:ImageContainer;
     battleField:BattleField;
     //faction stats governing gameplay (upgradable)
     attack:number;
@@ -106,9 +107,15 @@ class Faction {
         this.fort_reproduction_unit_limit = fort_reproduction_unit_limit;
         this.unit_travel_speed = Math.max(getWidth(), getHeight()) / 7.5;
         if(load_image)
+        {
             this.fort_avatar = new ImageContainer(this.name, `./images/${this.name}.png`);
+            this.unit_avatar = new ImageContainer(this.name + "_unit", `./images/${this.name}unit.png`);
+        }
         else
+        {
             this.fort_avatar = new ImageContainer(this.name, null);
+            this.unit_avatar = new ImageContainer(this.name + "_unit", null);
+        }
     }
     time_elapsed():number
     {
@@ -132,7 +139,7 @@ class Unit extends SquareAABBCollidable implements Attackable {
     render:boolean;
     constructor(faction:Faction, fort:Fort, x:number, y:number)
     {
-        super(x, y, Math.ceil(faction.battleField.fort_dim / 8), Math.ceil(faction.battleField.fort_dim / 8));
+        super(x, y, Math.ceil(faction.battleField.fort_dim / 3), Math.ceil(faction.battleField.fort_dim / 3));
         this.faction = faction;
         this.hp = faction.starting_unit_hp;
         this.currentFort = fort;
@@ -141,11 +148,9 @@ class Unit extends SquareAABBCollidable implements Attackable {
     }
     draw(canvas:HTMLCanvasElement, ctx:CanvasRenderingContext2D):void
     {
-        if(this.render)
+        if(this.render && this.faction.unit_avatar.image)
         {
-            ctx.fillStyle = this.faction.color.htmlRBG();
-            ctx.fillRect(Math.round(this.x), Math.round(this.y), this.width, this.height);
-            ctx.strokeRect(Math.round(this.x), Math.round(this.y), this.width, this.height)
+            ctx.drawImage(this.faction.unit_avatar.image, this.mid_x(), this.mid_y());
         }
     }
     update_state(delta_time:number):boolean

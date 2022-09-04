@@ -57,10 +57,14 @@ class Faction {
         this.money_production_per_second = 10;
         this.fort_reproduction_unit_limit = fort_reproduction_unit_limit;
         this.unit_travel_speed = Math.max(getWidth(), getHeight()) / 7.5;
-        if (load_image)
+        if (load_image) {
             this.fort_avatar = new ImageContainer(this.name, `./images/${this.name}.png`);
-        else
+            this.unit_avatar = new ImageContainer(this.name + "_unit", `./images/${this.name}unit.png`);
+        }
+        else {
             this.fort_avatar = new ImageContainer(this.name, null);
+            this.unit_avatar = new ImageContainer(this.name + "_unit", null);
+        }
     }
     time_elapsed() {
         return this.battleField.time_elapsed();
@@ -77,7 +81,7 @@ class Faction {
 ;
 class Unit extends SquareAABBCollidable {
     constructor(faction, fort, x, y) {
-        super(x, y, Math.ceil(faction.battleField.fort_dim / 8), Math.ceil(faction.battleField.fort_dim / 8));
+        super(x, y, Math.ceil(faction.battleField.fort_dim / 3), Math.ceil(faction.battleField.fort_dim / 3));
         this.faction = faction;
         this.hp = faction.starting_unit_hp;
         this.currentFort = fort;
@@ -85,10 +89,8 @@ class Unit extends SquareAABBCollidable {
         this.render = true;
     }
     draw(canvas, ctx) {
-        if (this.render) {
-            ctx.fillStyle = this.faction.color.htmlRBG();
-            ctx.fillRect(Math.round(this.x), Math.round(this.y), this.width, this.height);
-            ctx.strokeRect(Math.round(this.x), Math.round(this.y), this.width, this.height);
+        if (this.render && this.faction.unit_avatar.image) {
+            ctx.drawImage(this.faction.unit_avatar.image, this.mid_x(), this.mid_y());
         }
     }
     update_state(delta_time) {

@@ -978,14 +978,13 @@ class Game {
         this.factions[0].attack = 2;
         this.factions[0].unit_reproduction_per_second = 1;
         this.game_over = true;
-        srand(6);
+        srand(Math.random() * max_32_bit_signed);
         // seeds 607, 197 are pretty good so far lol
         for(let i = 0; i < 5; i++)
         {
             this.factions.push(new Faction("faction" + i, new RGB(random() * 128 + 128, random() * 128 + 128, random() * 128 + 128), 120, true));
         }
         this.factions[1].unit_reproduction_per_second += 0.3;
-        srand(Math.random() * max_32_bit_signed);
         this.currentField = new BattleField(this, [0, 0, width, height], this.factions, Math.max(width, height) / (isTouchSupported() ? 11 : 15), 10);
         //this.factions[0].battleField = this.currentField;
         const is_player = (e:any) => this.currentField.find_nearest_fort(e.touchPos[0], e.touchPos[1]).faction === this.currentField.player_faction()

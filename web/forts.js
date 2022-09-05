@@ -432,7 +432,7 @@ class FieldMap {
                             break;
                         }
                     }
-                    else if (this.reduce_rendered_units && unit.render === true && other.render === true) //they are of the same faction, and are being rendered
+                    else if (this.reduce_rendered_units || units.length > 100 && unit.render === true && other.render === true) //they are of the same faction, and are being rendered
                      {
                         if (unit.targetFort === other.targetFort && manhattan_distance(unit, other) < unit.width * 0.5) {
                             unit.render = false;
@@ -679,6 +679,9 @@ class UpgradePanel extends SimpleGridLayoutManager {
             this.frame.faction[this.attribute_name] += this.increase_function(this.frame.faction[this.attribute_name]);
         }
     }
+    get() {
+        return this.frame.faction[this.attribute_name];
+    }
     get_value() {
         if (this.frame.faction[this.attribute_name] !== undefined && this.alt_text() === "")
             return Math.round(this.frame.faction[this.attribute_name] * 1000) / 1000;
@@ -714,11 +717,13 @@ class UpgradeScreen extends SimpleGridLayoutManager {
         }
         {
             const upgrades = new UpgradePanel((x) => diff_log(x, 100), this, "unit_defense", "UDefense", [panel_width, panel_height], 0, 0);
+            upgrades.alt_text = () => Math.round(upgrades.get() * 100) + "%";
             this.addElement(upgrades);
             this.upgrade_panels.push(upgrades);
         }
         {
             const upgrades = new UpgradePanel((x) => diff_log(x, 95), this, "fort_defense", "FDefense", [panel_width, panel_height], 0, 0);
+            upgrades.alt_text = () => Math.round(upgrades.get() * 100) + "%";
             this.addElement(upgrades);
             this.upgrade_panels.push(upgrades);
         }
@@ -1038,8 +1043,9 @@ window.send_units = (from, to) => window.game.currentField.forts[from].send_unit
 window.super_charged = () => {
     for (let i = 0; i < window.factions.length; i++) {
         const faction = window.factions[i];
-        faction.unit_reproduction_per_second = 15;
+        faction.unit_reproduction_per_second += 5;
     }
+    factions[0].attack = 4.5;
     player_faction.unit_reproduction_per_second += 5;
 };
 //toggle hard mode  //hard mode has ai upgrade 2x for every player upgrade

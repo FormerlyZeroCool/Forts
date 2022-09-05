@@ -197,7 +197,7 @@ class Fort extends SquareAABBCollidable {
     }
     update_state(delta_time) {
         //reproduce new units
-        if (this.units.length < this.faction.fort_reproduction_unit_limit && Date.now() - this.last_update_unit_reproduction > (1000 / this.faction.unit_reproduction_per_second)) {
+        if (this.units.length + this.leaving_units.length < this.faction.fort_reproduction_unit_limit && Date.now() - this.last_update_unit_reproduction > (1000 / this.faction.unit_reproduction_per_second)) {
             const head = this.units.pop();
             this.units.push(new Unit(this.faction, this, this.mid_x(), this.mid_y()));
             if (head)

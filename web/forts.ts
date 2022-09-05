@@ -527,8 +527,10 @@ class FieldMap {
     data:Cell[];
     faction_index_lookup:Map<Faction, number>;
     field:BattleField;
-    constructor(field:BattleField)
+    reduce_rendered_units:boolean
+    constructor(field:BattleField, reduce_rendered_units:boolean)
     {
+        this.reduce_rendered_units = reduce_rendered_units;
         this.field = field;
         this.data = [];
         this.faction_index_lookup = new Map<Faction, number>();
@@ -536,7 +538,7 @@ class FieldMap {
         {
             this.faction_index_lookup.set(field.factions[i], i);
         }
-        const sq_dim = 10;
+        const sq_dim = 20;
         for(let i = 0; i < sq_dim * sq_dim; i++)
         {
             this.data.push(new Cell(field));
@@ -546,9 +548,9 @@ class FieldMap {
             const unit = field.traveling_units[i];
             const grid_x = Math.floor(unit.x / field.dimensions[2] * sq_dim);
             const grid_y = Math.floor(unit.y / field.dimensions[3] * sq_dim);
-            //console.log(grid_x, grid_y, field.dimensions[2]);
             const cell = this.data[grid_x + grid_y * sq_dim];
-            cell.push_unit(unit);
+            if(cell)
+                cell.push_unit(unit);
         }
     }
     handle_by_cell():void
@@ -590,7 +592,7 @@ class FieldMap {
     
                         
                     }
-                    else if(units.length > 200 && unit.render === true && other.render === true)//they are of the same faction, and are being rendered
+                    else if(this.reduce_rendered_units && unit.render === true && other.render === true)//they are of the same faction, and are being rendered
                     {
                         
                         if(unit.targetFort === other.targetFort && manhattan_distance(unit, other) < unit.width*0.5)
@@ -804,7 +806,7 @@ class BattleField {
                 this.traveling_units.splice(i, 1);
             }
         }
-        const collision_checker = new FieldMap(this);
+        const collision_checker = new FieldMap(this, this.traveling_units.length > 1200);
         collision_checker.handle_by_cell();
         this.handleAI(delta_time);
     }

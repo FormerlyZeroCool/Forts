@@ -373,6 +373,77 @@ function calc_points_move_early_game(attacker, defender, delta_time, hp_by_facti
     //points += hp_by_faction.get(attacker.fort.faction)!;
     return points;
 }
+class Cell {
+    constructor(field) {
+        this.units = [];
+    }
+    push_unit(unit) {
+        this.units.push(unit);
+    }
+}
+;
+class FieldMap {
+    constructor(field) {
+        this.field = field;
+        this.data = [];
+        this.faction_index_lookup = new Map();
+        for (let i = 0; i < field.factions.length; i++) {
+            this.faction_index_lookup.set(field.factions[i], i);
+        }
+        const sq_dim = 10;
+        for (let i = 0; i < sq_dim * sq_dim; i++) {
+            this.data.push(new Cell(field));
+        }
+        for (let i = 0; i < field.traveling_units.length; i++) {
+            const unit = field.traveling_units[i];
+            const grid_x = Math.floor(unit.x / field.dimensions[2] * sq_dim);
+            const grid_y = Math.floor(unit.y / field.dimensions[3] * sq_dim);
+            //console.log(grid_x, grid_y, field.dimensions[2]);
+            const cell = this.data[grid_x + grid_y * sq_dim];
+            cell.push_unit(unit);
+        }
+    }
+    handle_by_cell() {
+        for (let i = 0; i < this.data.length; i++) {
+            this.handle_cell(i);
+        }
+    }
+    handle_cell(index) {
+        const cell = this.data[index];
+        const units = cell.units;
+        for (let i = 0; i < units.length; i++) {
+            const unit = units[i];
+            for (let j = 0; j < units.length; j++) {
+                const other = units[j];
+                if (unit.check_collision(other)) {
+                    if (other.faction !== unit.faction) {
+                        unit.attack(other);
+                        other.attack(unit);
+                        other.render = true;
+                        unit.render = true;
+                        if (other.hp <= 0) {
+                            this.field.traveling_units.splice(this.field.traveling_units.indexOf(other), 1);
+                            units.splice(j, 1);
+                        }
+                        if (unit.hp <= 0) {
+                            this.field.traveling_units.splice(this.field.traveling_units.indexOf(unit), 1);
+                            units.splice(i, 1);
+                            break;
+                        }
+                    }
+                    else if (units.length > 200 && unit.render === true && other.render === true) //they are of the same faction, and are being rendered
+                     {
+                        if (unit.targetFort === other.targetFort && manhattan_distance(unit, other) < unit.width * 0.5) {
+                            unit.render = false;
+                            other.render = true;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+;
 class BattleField {
     //has all the forts
     //forts know what faction owns them, how many units they have
@@ -523,33 +594,9 @@ class BattleField {
             if (!unit.update_state(delta_time)) {
                 this.traveling_units.splice(i, 1);
             }
-            else {
-                for (let j = 0; j < this.traveling_units.length; j++) {
-                    const other = this.traveling_units[j];
-                    if (unit.check_collision(other)) {
-                        if (other.faction !== unit.faction) {
-                            unit.attack(other);
-                            other.attack(unit);
-                            other.render = true;
-                            unit.render = true;
-                            if (other.hp <= 0)
-                                this.traveling_units.splice(j, 1);
-                            if (unit.hp <= 0) {
-                                this.traveling_units.splice(i, 1);
-                                break;
-                            }
-                        }
-                        else if (this.traveling_units.length > 600 && unit.render === true && other.render === true) //they are of the same faction, and are being rendered
-                         {
-                            if (unit.targetFort === other.targetFort && manhattan_distance(unit, other) < unit.width * 0.5) {
-                                unit.render = false;
-                                other.render = true;
-                            }
-                        }
-                    }
-                }
-            }
         }
+        const collision_checker = new FieldMap(this);
+        collision_checker.handle_by_cell();
         this.handleAI(delta_time);
     }
     check_fort_collision(object) {
@@ -987,5 +1034,12 @@ async function main() {
 main();
 window.RGB = RGB;
 window.send_units = (from, to) => window.game.currentField.forts[from].send_units(window.game.currentField.forts[to]);
+window.super_charged = () => {
+    for (let i = 0; i < window.factions.length; i++) {
+        const faction = window.factions[i];
+        faction.unit_reproduction_per_second = 15;
+    }
+    player_faction.unit_reproduction_per_second += 5;
+};
 //toggle hard mode  //hard mode has ai upgrade 2x for every player upgrade
 //toggle joint control mode

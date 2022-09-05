@@ -456,16 +456,10 @@ function calc_points_move(attacker:FortAggregate, defender:FortAggregate, delta_
     const enemy_after_time_to_travel_hp:number = (time_to_travel * def_repro_per_frame < defender.fort.faction.fort_reproduction_unit_limit ?
         time_to_travel * def_repro_per_frame : 
         defender.fort.faction.fort_reproduction_unit_limit) + defender.defense_power;
+
     if(attacker.fort.faction === defender.fort.faction)
     {
-        //points += (attacker.defense_power - enemy_after_time_to_travel_hp * 2) / 5;
-        //points -= time_to_travel * (1000 / delta_time);
-        //points = -1000;
-        //points += (attacker.defense_power) - (enemy_after_time_to_travel_hp + defender.defense_leaving_forces);
-    }
-    else{
         points += (attacker.defense_power);
-        //points += 25;
     }
     points -= (enemy_after_time_to_travel_hp + defender.defense_leaving_forces / 2) - attacker.attacking_force;
     points -= defender.attacking_force / 15;
@@ -485,10 +479,10 @@ function calc_points_move_mid_game(attacker:FortAggregate, defender:FortAggregat
     if(attacker.fort.faction !== defender.fort.faction && defender.en_route_from_player === 0) {
         points += (attacker.defense_power);
         points -= (enemy_after_time_to_travel_hp + defender.defense_leaving_forces / 2) + attacker.attacking_force;
-        points -= defender.attacking_force;
         points -= time_to_travel * 2;
         //points += 25;
     }
+    points -= defender.attacking_force;
     //points += hp_by_faction.get(attacker.fort.faction)!;
 
     return points;
@@ -502,8 +496,9 @@ function calc_points_move_early_game(attacker:FortAggregate, defender:FortAggreg
     const enemy_after_time_to_travel_hp:number = (time_to_travel * def_repro_per_frame < defender.fort.faction.fort_reproduction_unit_limit ?
         time_to_travel * def_repro_per_frame : 
         defender.fort.faction.fort_reproduction_unit_limit) + defender.defense_power;
-    if (attacker.fort.faction !== defender.fort.faction && defender.fort.faction === defender.fort.faction.battleField.factions[0] && defender.en_route_from_player === 0) {
-        points += (attacker.defense_power);
+    if (attacker.fort.faction !== defender.fort.faction && defender.en_route_from_player === 0) {
+        if(defender.fort.faction === defender.fort.faction.battleField.factions[0])
+            points += (attacker.defense_power);
         points -= (enemy_after_time_to_travel_hp + defender.defense_leaving_forces / 2) + attacker.attacking_force;
         points -= defender.attacking_force;
         points -= time_to_travel;
@@ -653,11 +648,11 @@ class BattleField {
 
         }
         let calc_points = calc_points_move_early_game;
-        if(this.time_elapsed() > 10 * 1000)
+        if(this.time_elapsed() > 15 * 1000)
         {
             calc_points = calc_points_move_mid_game;
         }
-        else if(this.time_elapsed() > 20 * 1000)
+        else if(this.time_elapsed() > 23 * 1000)
         {
             calc_points = calc_points_move;
         }

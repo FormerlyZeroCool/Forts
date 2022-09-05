@@ -1,5 +1,5 @@
 # Forts 
-<h3>Help the Diamondians take over all the world's forts!</h3>
+<h3>Help the Apatao take over all the world's forts!</h3>
 <h2>
 <a href="web/index.html">Click here to play!</a>
 </h2>

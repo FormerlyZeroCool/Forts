@@ -583,7 +583,6 @@ class BattleField {
             barrier.x = x - barrier.width / 2;
             barrier.y = y - barrier.height / 2;
             this.barriers.push(barrier);
-            console.log(barrier);
             return true;
         }
         return false;
@@ -1208,6 +1207,11 @@ window.super_charged = () => {
     }
     factions[0].attack = 4.5;
     player_faction.unit_reproduction_per_second += 5;
+};
+window.add_barriers = (count = 10) => {
+    const field = window.game.currentField;
+    for (let i = 0; i < count; i++)
+        field.unused_barriers.push(new Barrier(game.currentField, window.player_faction, 0, 0));
 };
 //toggle hard mode  //hard mode has ai upgrade 2x for every player upgrade
 //toggle joint control mode

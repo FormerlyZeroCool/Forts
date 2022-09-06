@@ -539,8 +539,7 @@ class BattleField {
         this.game = game;
         this.factions = [];
         this.forts = [];
-        this.barriers_limit = 10;
-        this.barriers_count = 0;
+        this.unused_barriers = [];
         this.barriers = [];
         this.traveling_units = [];
         this.player_faction_index = 1;
@@ -565,6 +564,9 @@ class BattleField {
                 factions_copy.splice(faction_index, 1);
         }
         this.place_random_fort([this.player_faction()]);
+        for (let i = 0; i < fort_count; i++) {
+            this.unused_barriers.push(new Barrier(this, this.player_faction(), 0, 0));
+        }
     }
     barrier(faction, x, y) {
         const bar = new Barrier(this, faction, x, y);
@@ -573,9 +575,13 @@ class BattleField {
         return bar;
     }
     place_barrier(faction, x, y) {
-        if (this.barriers_count < this.barriers_limit) {
-            this.barriers_count++;
-            this.barriers.push(this.barrier(faction, x, y));
+        if (this.unused_barriers.length > 0) {
+            const barrier = this.unused_barriers.pop();
+            barrier.faction = faction;
+            barrier.x = x - barrier.width / 2;
+            barrier.y = y - barrier.height / 2;
+            this.barriers.push(barrier);
+            console.log(barrier);
             return true;
         }
         return false;
@@ -898,7 +904,16 @@ class Game {
         this.touch_listener = new SingleTouchListener(canvas, true, true, false);
         this.touch_listener.registerCallBack("touchstart", (e) => !this.regular_control, (e) => {
             const point = new SquareAABBCollidable(e.touchPos[0], e.touchPos[1], 1, 1);
-            if (!point.check_collision_gui(this.control_state_toggle_group, this.control_state_toggle_group.x, this.control_state_toggle_group.y)) {
+            let collision = false;
+            for (let i = 0; i < this.currentField.barriers.length; i++) {
+                const barrier = this.currentField.barriers[i];
+                if (point.check_collision(barrier)) {
+                    this.currentField.unused_barriers.push(this.currentField.barriers.splice(i, 1)[0]);
+                    collision = true;
+                    break;
+                }
+            }
+            if (!collision && !point.check_collision_gui(this.control_state_toggle_group, this.control_state_toggle_group.x, this.control_state_toggle_group.y)) {
                 this.currentField.place_barrier(this.currentField.player_faction(), e.touchPos[0], e.touchPos[1]);
             }
         });
@@ -946,18 +961,18 @@ class Game {
         this.control_state_toggle_group.y = this.currentField.dimensions[3] - this.control_state_toggle_group.pixelDim[1];
         const b_state = "Place Barriers";
         const c_state = "Control Game";
-        const button_barriers = new GuiButton(() => { }, c_state, this.control_state_toggle_group.pixelDim[0]);
-        button_barriers.callback = () => {
-            if (button_barriers.text === b_state) {
-                button_barriers.text = c_state;
+        this.button_toggle = new GuiButton(() => { }, c_state, this.control_state_toggle_group.pixelDim[0]);
+        this.button_toggle.callback = () => {
+            if (this.button_toggle.text === b_state) {
+                this.button_toggle.text = c_state;
                 this.regular_control = true;
             }
             else {
-                button_barriers.text = b_state;
+                this.button_toggle.text = b_state;
                 this.regular_control = false;
             }
         };
-        this.control_state_toggle_group.addElement(button_barriers);
+        this.control_state_toggle_group.addElement(this.button_toggle);
         this.control_state_toggle_group.createHandlers(this.keyboard_handler, this.touch_listener);
     }
     is_faction_on_field(faction) {
@@ -1033,7 +1048,7 @@ class Game {
             }
             else {
                 const barrier = this.currentField.barrier(this.currentField.player_faction(), this.touch_listener.touchPos[0], this.touch_listener.touchPos[1]);
-                if (this.currentField.barriers_count < this.currentField.barriers_limit && barrier_sprite.image) {
+                if (this.currentField.unused_barriers.length > 0 && barrier_sprite.image) {
                     ctx.drawImage(barrier_sprite.image, barrier.x, barrier.y, barrier.width, barrier.height);
                 }
                 else if (barrier_invalid_sprite.image) {

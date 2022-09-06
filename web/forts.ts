@@ -745,7 +745,7 @@ class BattleField {
         this.canvas.height = dimensions[3];
         this.ctx = this.canvas.getContext("2d")!;
         const factions_copy:Faction[] = [];
-        for(let i = 0; i < factions.length * 2; i++)
+        for(let i = 0; i < factions.length; i++)
         {
             const to_copy = factions[i];
             to_copy.battleField = this;
@@ -763,7 +763,7 @@ class BattleField {
         }
         this.place_random_fort([this.player_faction()]);
 
-        for(let i = 0; i < fort_count; i++)
+        for(let i = 0; i < fort_count * 2; i++)
         {
             this.unused_barriers.push(new Barrier(this, this.player_faction(), 0, 0));
         }
@@ -1194,7 +1194,7 @@ class Game {
             this.factions.push(new Faction("faction" + i, new RGB(random() * 128 + 128, random() * 128 + 128, random() * 128 + 128), 120, true));
         }
         this.factions[1].unit_reproduction_per_second += 0.3;
-        this.currentField = new BattleField(this, [0, 0, width, height], this.factions, Math.max(width, height) / (isTouchSupported() ? 11 : 15), 10);
+        this.currentField = new BattleField(this, [0, 0, width, height], this.factions, Math.max(width, height) / (isTouchSupported() ? 11 : 15), Math.floor(Math.random() * 5) + 10);
         //this.factions[0].battleField = this.currentField;
         const is_player = (e:any) => this.currentField.find_nearest_fort(e.touchPos[0], e.touchPos[1]).faction === this.currentField.player_faction()
         this.keyboard_handler = new KeyboardHandler();
@@ -1511,7 +1511,7 @@ class Game {
         this.upgrade_menu.deactivate();
         this.game_over = false;
         this.game_start = Date.now();
-        this.currentField = new BattleField(this, this.currentField.dimensions, this.factions, this.currentField.fort_dim, 10);
+        this.currentField = new BattleField(this, this.currentField.dimensions, this.factions, this.currentField.fort_dim, Math.floor(Math.random() * 5) + 10);
     }
 }
 async function main()

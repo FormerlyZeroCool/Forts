@@ -607,25 +607,23 @@ class FieldMap {
                 const barrier = barriers[j];
                 if(barrier.check_collision(unit))
                 {
-                    barrier.colliding = 30;
                     if(barrier.faction !== unit.faction)
                     {
-                            unit.attack(barrier);
-                            barrier.attack(unit);
-                            unit.render = true;
-                            if(barrier.hp <= 0){
-                                this.field.barriers.splice(this.field.barriers.indexOf(barrier), 1);
-                                barriers.splice(j, 1);
-                            }
-    
-                            if(unit.hp <= 0)
-                            {
-                                this.field.traveling_units.splice(this.field.traveling_units.indexOf(unit), 1);
-                                units.splice(i, 1);
-                                break;
-                            }
-    
-                        
+                        barrier.colliding = 30;
+                        unit.attack(barrier);
+                        barrier.attack(unit);
+                        unit.render = true;
+                        if(barrier.hp <= 0){
+                            this.field.barriers.splice(this.field.barriers.indexOf(barrier), 1);
+                            barriers.splice(j, 1);
+                        }
+                    
+                        if(unit.hp <= 0)
+                        {
+                            this.field.traveling_units.splice(this.field.traveling_units.indexOf(unit), 1);
+                            units.splice(i, 1);
+                            break;
+                        }
                     }
                 }
             }

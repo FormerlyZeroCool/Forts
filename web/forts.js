@@ -445,8 +445,8 @@ class FieldMap {
             for (let j = 0; j < barriers.length; j++) {
                 const barrier = barriers[j];
                 if (barrier.check_collision(unit)) {
-                    barrier.colliding = 30;
                     if (barrier.faction !== unit.faction) {
+                        barrier.colliding = 30;
                         unit.attack(barrier);
                         barrier.attack(unit);
                         unit.render = true;

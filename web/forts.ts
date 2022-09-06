@@ -572,15 +572,15 @@ class FieldMap {
         {
             const barrier = field.barriers[i];
             {
-                const grid_x = Math.floor(barrier.x / field.dimensions[2] * sq_dim);
-                const grid_y = Math.floor(barrier.y / field.dimensions[3] * sq_dim);
+                const grid_x = Math.floor((barrier.x - barrier.width / 2) / field.dimensions[2] * sq_dim);
+                const grid_y = Math.floor((barrier.y - barrier.width / 2) / field.dimensions[3] * sq_dim);
                 const cell = this.data[grid_x + grid_y * sq_dim];
                 if(cell)
                     cell.push_barrier(barrier);
             }
             {
-                const grid_x = Math.floor((barrier.x + barrier.width) / field.dimensions[2] * sq_dim);
-                const grid_y = Math.floor((barrier.y + barrier.height)/ field.dimensions[3] * sq_dim);
+                const grid_x = Math.floor((barrier.x + barrier.width / 2) / field.dimensions[2] * sq_dim);
+                const grid_y = Math.floor((barrier.y + barrier.height / 2) / field.dimensions[3] * sq_dim);
                 const cell = this.data[grid_x + grid_y * sq_dim];
                 if(cell)
                     cell.push_barrier(barrier);

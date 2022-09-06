@@ -116,7 +116,7 @@ class Faction {
         this.fort_reproduction_unit_limit = fort_reproduction_unit_limit;
         this.unit_travel_speed = Math.max(getWidth(), getHeight()) / 7.5;
         this.barrier_start_hp = 1000;
-        this.barrier_attack = 0.45;
+        this.barrier_attack = 0.75;
         if(load_image)
         {
             this.fort_avatar = new ImageContainer(this.name, `./images/${this.name}.png`);

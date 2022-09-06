@@ -745,7 +745,7 @@ class BattleField {
         this.canvas.height = dimensions[3];
         this.ctx = this.canvas.getContext("2d")!;
         const factions_copy:Faction[] = [];
-        for(let i = 0; i < factions.length; i++)
+        for(let i = 0; i < factions.length * 2; i++)
         {
             const to_copy = factions[i];
             to_copy.battleField = this;

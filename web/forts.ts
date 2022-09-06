@@ -1,5 +1,5 @@
 import {SingleTouchListener, MouseDownTracker, isTouchSupported, KeyboardHandler} from './io.js'
-import {SimpleGridLayoutManager, GuiTextBox, GuiButton, GuiSpacer, getHeight, getWidth, RGB, ImageContainer, Sprite} from './gui.js'
+import {SimpleGridLayoutManager, GuiTextBox, GuiButton, GuiSpacer, getHeight, getWidth, RGB, ImageContainer, Sprite, GuiElement} from './gui.js'
 import {random, srand, max_32_bit_signed, get_angle} from './utils.js'
 
 interface Attackable {
@@ -33,6 +33,11 @@ class SquareAABBCollidable {
     {
         return this.x < other.x + other.width && other.x < this.x + this.width && 
             this.y < other.y + other.height && other.y < this.y + this.height;
+    }
+    check_collision_gui(other:GuiElement, x:number, y:number):boolean
+    {
+        return this.x < x + other.width() && x < this.x + this.width && 
+            this.y < y + other.height() && y < this.y + this.height;
     }
     get_normalized_vector(other:SpatialObject):number[]
     {
@@ -86,6 +91,9 @@ class Faction {
     unit_defense:number;
     starting_unit_hp:number;
     unit_travel_speed:number;
+
+    barrier_start_hp:number;
+    barrier_attack:number;
     //for move calculation
     avg_move_value:number;
     sum_move_points:number;
@@ -107,6 +115,8 @@ class Faction {
         this.money_production_per_second = 10;
         this.fort_reproduction_unit_limit = fort_reproduction_unit_limit;
         this.unit_travel_speed = Math.max(getWidth(), getHeight()) / 7.5;
+        this.barrier_start_hp = 1000;
+        this.barrier_attack = 0.45;
         if(load_image)
         {
             this.fort_avatar = new ImageContainer(this.name, `./images/${this.name}.png`);
@@ -514,13 +524,19 @@ function calc_points_move_early_game(attacker:FortAggregate, defender:FortAggreg
 }
 class Cell {
     units:Unit[];
+    barriers:Barrier[]
     constructor(field:BattleField)
     {
         this.units = [];
+        this.barriers = [];
     }
     push_unit(unit:Unit):void
     {
         this.units.push(unit);
+    }
+    push_barrier(barrier:Barrier):void
+    {
+        this.barriers.push(barrier);
     }
 };
 class FieldMap {
@@ -552,6 +568,24 @@ class FieldMap {
             if(cell)
                 cell.push_unit(unit);
         }
+        for(let i = 0; i < field.barriers.length; i++)
+        {
+            const barrier = field.barriers[i];
+            {
+                const grid_x = Math.floor(barrier.x / field.dimensions[2] * sq_dim);
+                const grid_y = Math.floor(barrier.y / field.dimensions[3] * sq_dim);
+                const cell = this.data[grid_x + grid_y * sq_dim];
+                if(cell)
+                    cell.push_barrier(barrier);
+            }
+            {
+                const grid_x = Math.floor((barrier.x + barrier.width) / field.dimensions[2] * sq_dim);
+                const grid_y = Math.floor((barrier.y + barrier.height)/ field.dimensions[3] * sq_dim);
+                const cell = this.data[grid_x + grid_y * sq_dim];
+                if(cell)
+                    cell.push_barrier(barrier);
+            }
+        }
     }
     handle_by_cell():void
     {
@@ -564,9 +598,37 @@ class FieldMap {
     {
         const cell = this.data[index];
         const units = cell.units;
+        const barriers = cell.barriers;
         for(let i = 0; i < units.length; i++)
         {
-            const unit = units[i]
+            const unit = units[i];
+            for(let j = 0; j < barriers.length; j++)
+            {
+                const barrier = barriers[j];
+                if(barrier.check_collision(unit))
+                {
+                    barrier.colliding = 30;
+                    if(barrier.faction !== unit.faction)
+                    {
+                            unit.attack(barrier);
+                            barrier.attack(unit);
+                            unit.render = true;
+                            if(barrier.hp <= 0){
+                                this.field.barriers.splice(this.field.barriers.indexOf(barrier), 1);
+                                barriers.splice(j, 1);
+                            }
+    
+                            if(unit.hp <= 0)
+                            {
+                                this.field.traveling_units.splice(this.field.traveling_units.indexOf(unit), 1);
+                                units.splice(i, 1);
+                                break;
+                            }
+    
+                        
+                    }
+                }
+            }
             for(let j = 0; j < units.length; j++)
             {
                 const other = units[j];
@@ -608,6 +670,47 @@ class FieldMap {
     }
 
 };
+const barrier_sprite = new ImageContainer("barrier", "./images/barrier.png");
+const barrier_invalid_sprite = new ImageContainer("barrier invalid", "./images/barrier_invalid.png");
+const barrier_colliding_sprite = new ImageContainer("barrier colliding", "./images/barrier_colliding.png");
+class Barrier extends SquareAABBCollidable implements Attackable {
+    faction:Faction;
+    hp:number;
+    colliding:number;
+    constructor(field:BattleField, faction:Faction, x:number, y:number)
+    {
+        super(x, y, field.fort_dim / 2, field.fort_dim / 2);
+        this.faction = faction;
+        this.hp = faction.barrier_start_hp;
+        this.colliding = 0;
+    }
+    attack(enemy: Attackable): void {
+        enemy.lose_hp(this.faction.barrier_attack * (1 - enemy.defense()), this);
+    }
+    offense(): number {
+        return this.faction.barrier_attack;
+    }
+    defense(): number {
+        return this.faction.fort_defense;
+    }
+    lose_hp(hp: number, enemy: Attackable): void {
+        this.hp -= hp;
+    }
+    get_faction(): Faction {
+        return this.faction;
+    }
+    draw(ctx:CanvasRenderingContext2D):void
+    {
+        if(this.colliding > 0)
+        {
+            this.colliding--;
+            if(barrier_colliding_sprite.image)
+            ctx.drawImage(barrier_colliding_sprite.image, this.x, this.y, this.width, this.height);
+        }
+        else if(barrier_sprite.image)
+            ctx.drawImage(barrier_sprite.image, this.x, this.y, this.width, this.height);
+    }
+};
 class BattleField {
     factions:Faction[];
     player_faction_index:number;
@@ -619,6 +722,9 @@ class BattleField {
     ctx:CanvasRenderingContext2D;
     fort_dim:number;
     game:Game;
+    barriers_limit:number;
+    barriers_count:number;
+    barriers:Barrier[];
     //has all the forts
     //forts know what faction owns them, how many units they have
     //units know what faction they belong to from there they derive their attack/defense
@@ -629,6 +735,9 @@ class BattleField {
         this.game = game;
         this.factions = [];
         this.forts = [];
+        this.barriers_limit = 10;
+        this.barriers_count = 0;
+        this.barriers = [];
         this.traveling_units = [];
         this.player_faction_index = 1;
         this.fort_dim = fort_dim;
@@ -655,6 +764,23 @@ class BattleField {
                 factions_copy.splice(faction_index, 1);
         }
         this.place_random_fort([this.player_faction()]);
+    }
+    barrier(faction:Faction, x:number, y:number):Barrier
+    {
+        const bar = new Barrier(this, faction, x, y);
+        bar.x -= bar.width / 2;
+        bar.y -= bar.height / 2;
+        return bar;
+    }
+    place_barrier(faction:Faction, x:number, y:number):boolean
+    {
+        if(this.barriers_count < this.barriers_limit)
+        {
+            this.barriers_count++;
+            this.barriers.push(this.barrier(faction, x, y));
+            return true;
+        }
+        return false;
     }
     time_elapsed():number
     {
@@ -683,6 +809,9 @@ class BattleField {
             const unit = this.traveling_units[i];
             unit.draw(this.canvas, this.ctx);
         }
+        this.barriers.forEach(barrier => {
+            barrier.draw(this.ctx);
+        });
         ctx.drawImage(this.canvas, this.dimensions[0], this.dimensions[1]);
     }
     handleAI(delta_time:number):void
@@ -834,7 +963,7 @@ class BattleField {
         if(factions.length)
         {
             const x = Math.floor(random() * (this.dimensions[2] - this.fort_dim) + this.dimensions[0]);
-            const y = Math.floor(random() * (this.dimensions[3] - this.fort_dim) + this.dimensions[1]);
+            const y = Math.floor(random() * (this.dimensions[3] - this.fort_dim * 1.5) + this.dimensions[1]);
             const owner = random() < 0.5 ? 0 : Math.floor(random() * factions.length);
             const fort = new Fort(factions[owner], x, y, this.fort_dim, this.fort_dim);
             if(!this.check_valid_fort_position(fort))
@@ -1029,12 +1158,15 @@ class Game {
     losses:number
     difficulty:number;
     background:ImageContainer;
+    control_state_toggle_group:SimpleGridLayoutManager;
+    regular_control:boolean;
     
     constructor(canvas:HTMLCanvasElement)
     {
         this.background = new ImageContainer("background", `./images/${"background"}.png`)
         this.dev_mode = false;
         this.joint_attack_mode = false;
+        this.regular_control = true;
         this.difficulty = 0;
         this.wins = 0;
         this.losses = 0;
@@ -1060,25 +1192,32 @@ class Game {
         const is_player = (e:any) => this.currentField.find_nearest_fort(e.touchPos[0], e.touchPos[1]).faction === this.currentField.player_faction()
         this.keyboard_handler = new KeyboardHandler();
         this.touch_listener = new SingleTouchListener(canvas, true, true, false);
-        
-        this.touch_listener.registerCallBack("touchstart", (e:any) => is_player(e), (event:any) => {
+        this.touch_listener.registerCallBack("touchstart", (e:any) => !this.regular_control, (e:any) => {
+            const point = new SquareAABBCollidable(e.touchPos[0], e.touchPos[1], 1, 1);
+            if(!point.check_collision_gui(this.control_state_toggle_group, 
+                this.control_state_toggle_group.x, this.control_state_toggle_group.y))
+            {
+                this.currentField.place_barrier(this.currentField.player_faction(), e.touchPos[0], e.touchPos[1]);
+            }
+        });
+        this.touch_listener.registerCallBack("touchstart", (e:any) => is_player(e) && this.regular_control, (event:any) => {
             this.start_touch_forts.splice(0, this.start_touch_forts.length);
             const nearest_fort = this.currentField.find_nearest_fort(event.touchPos[0], event.touchPos[1]);
             if(nearest_fort.faction === this.currentField.player_faction())
                 this.start_touch_forts.push(nearest_fort);
         });
         const end_selection_possible = (e:any) => this.start_touch_forts.length !== 0;
-        this.touch_listener.registerCallBack("touchmove", (e:any) => end_selection_possible(e) && this.joint_attack_mode, (event:any) =>{
+        this.touch_listener.registerCallBack("touchmove", (e:any) => end_selection_possible(e) && this.joint_attack_mode && this.regular_control, (event:any) =>{
             const nearest_fort = this.currentField.find_nearest_fort(event.touchPos[0], event.touchPos[1]);
             this.end_touch_fort = nearest_fort;
             if(nearest_fort.faction === this.currentField.player_faction())
                 this.start_touch_forts.push(nearest_fort);
         });
-        this.touch_listener.registerCallBack("touchmove", (e:any) => end_selection_possible(e) && !this.joint_attack_mode, (event:any) =>{
+        this.touch_listener.registerCallBack("touchmove", (e:any) => end_selection_possible(e) && !this.joint_attack_mode && this.regular_control, (event:any) =>{
             const nearest_fort = this.currentField.find_nearest_fort(event.touchPos[0], event.touchPos[1]);
             this.end_touch_fort = nearest_fort;
         });
-        this.touch_listener.registerCallBack("touchend", end_selection_possible, (event:any) => {
+        this.touch_listener.registerCallBack("touchend", (e:any) => end_selection_possible(e) && this.regular_control, (event:any) => {
             this.end_touch_fort = this.currentField.find_nearest_fort(event.touchPos[0], event.touchPos[1]);
             for(let i = 0; i < this.start_touch_forts.length; i++)
             {
@@ -1105,7 +1244,26 @@ class Game {
         });
         this.currentField.update_state(1);
         window.addEventListener("load", () => setTimeout(() => this.currentField.draw(canvas, canvas.getContext("2d")!), 250));
-        
+        this.control_state_toggle_group = new SimpleGridLayoutManager([1, 1], [this.currentField.fort_dim * 2, this.currentField.fort_dim * 3/4]);
+        this.control_state_toggle_group.x = this.currentField.dimensions[2] - this.control_state_toggle_group.pixelDim[0];
+        this.control_state_toggle_group.y = this.currentField.dimensions[3] - this.control_state_toggle_group.pixelDim[1];
+        const b_state = "Place Barriers";
+        const c_state = "Control Game"
+        const button_barriers = new GuiButton(() =>{}, c_state, this.control_state_toggle_group.pixelDim[0]);
+        button_barriers.callback = () => {
+            if(button_barriers.text === b_state){
+                button_barriers.text = c_state;
+                this.regular_control = true;
+            }
+            else
+            {
+                button_barriers.text = b_state;
+                this.regular_control = false;
+            }
+        };
+        this.control_state_toggle_group.addElement(button_barriers);
+        this.control_state_toggle_group.createHandlers(this.keyboard_handler, this.touch_listener);
+
     }
     is_faction_on_field(faction:Faction):boolean
     {
@@ -1160,11 +1318,14 @@ class Game {
     }
     draw(canvas:HTMLCanvasElement, ctx:CanvasRenderingContext2D):void
     {
+        ctx.imageSmoothingEnabled = false;
         ctx.clearRect(this.currentField.dimensions[0], this.currentField.dimensions[1], this.currentField.dimensions[2], this.currentField.dimensions[3]);
         if(!this.game_over)
         {
             this.currentField.draw(canvas, ctx);
-            if(this.mouse_down_tracker.mouseDown && this.start_touch_forts.length && this.end_touch_fort)
+            if(this.regular_control)
+            {
+                if(this.mouse_down_tracker.mouseDown && this.start_touch_forts.length && this.end_touch_fort)
             {
                 ctx.strokeStyle = new RGB(125, 125, 125, 125).htmlRBGA();
                 ctx.lineWidth = 15;
@@ -1192,6 +1353,19 @@ class Game {
                 }
                 
                 ctx.stroke();
+                }
+            }
+            else
+            {
+                const barrier = this.currentField.barrier(this.currentField.player_faction(), this.touch_listener.touchPos[0], this.touch_listener.touchPos[1]);
+                if(this.currentField.barriers_count < this.currentField.barriers_limit && barrier_sprite.image)
+                {
+                    ctx.drawImage(barrier_sprite.image, barrier.x, barrier.y, barrier.width, barrier.height);
+                }
+                else if(barrier_invalid_sprite.image)
+                {
+                    ctx.drawImage(barrier_invalid_sprite.image, barrier.x, barrier.y, barrier.width, barrier.height);
+                }
             }
         }
         else 
@@ -1199,6 +1373,9 @@ class Game {
             ctx.drawImage(this.currentField.canvas, this.currentField.dimensions[0], this.currentField.dimensions[1]);
             this.upgrade_menu.draw(ctx);
         }
+        this.control_state_toggle_group.activate();
+        this.control_state_toggle_group.refresh();
+        this.control_state_toggle_group.draw(ctx);
     }
     time_elapsed():number
     {

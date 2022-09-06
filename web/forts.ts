@@ -655,7 +655,7 @@ class FieldMap {
     
                         
                     }
-                    else if(this.reduce_rendered_units || units.length > 100 && unit.render === true && other.render === true)//they are of the same faction, and are being rendered
+                    else if(this.reduce_rendered_units || units.length > 5 && unit.render === true && other.render === true)//they are of the same faction, and are being rendered
                     {
                         
                         if(unit.targetFort === other.targetFort && manhattan_distance(unit, other) < unit.width*0.5)

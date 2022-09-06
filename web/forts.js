@@ -451,7 +451,9 @@ class FieldMap {
                         barrier.attack(unit);
                         unit.render = true;
                         if (barrier.hp <= 0) {
-                            this.field.barriers.splice(this.field.barriers.indexOf(barrier), 1);
+                            const barrier_index = this.field.barriers.indexOf(barrier);
+                            if (barrier_index !== -1)
+                                this.field.barriers.splice(barrier_index, 1);
                             barriers.splice(j, 1);
                         }
                         if (unit.hp <= 0) {

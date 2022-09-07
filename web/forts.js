@@ -481,7 +481,7 @@ class FieldMap {
                             break;
                         }
                     }
-                    else if (this.reduce_rendered_units || units.length > 9 && unit.render === true && other.render === true) //they are of the same faction, and are being rendered
+                    else if (this.reduce_rendered_units || units.length > this.field.max_units_per_cell && unit.render === true && other.render === true) //they are of the same faction, and are being rendered
                      {
                         if (unit.targetFort === other.targetFort && manhattan_distance(unit, other) < unit.width * 0.5) {
                             unit.render = false;
@@ -538,6 +538,8 @@ class BattleField {
     //factions have offense/defense stats all owned forts take on, and attacking units take on
     constructor(game, dimensions, factions, fort_dim, fort_count) {
         this.game = game;
+        this.max_traveling_units = 1200;
+        this.max_units_per_cell = 10;
         this.factions = [];
         this.forts = [];
         this.unused_barriers = [];
@@ -699,6 +701,16 @@ class BattleField {
         }
     }
     update_state(delta_time) {
+        if (this.traveling_units.length > 100) {
+            if (delta_time > 20 && this.max_units_per_cell > 4) {
+                this.max_units_per_cell--;
+                console.log("sub", this.max_units_per_cell);
+            }
+            else if (delta_time < 12 && this.max_units_per_cell < 14) {
+                this.max_units_per_cell++;
+                console.log(this.max_units_per_cell);
+            }
+        }
         this.forts.forEach(fort => fort.update_state(delta_time));
         for (let i = 0; i < this.traveling_units.length; i++) {
             const unit = this.traveling_units[i];
@@ -706,7 +718,7 @@ class BattleField {
                 this.traveling_units.splice(i, 1);
             }
         }
-        const collision_checker = new FieldMap(this, this.traveling_units.length > 1200);
+        const collision_checker = new FieldMap(this, this.traveling_units.length > this.max_traveling_units);
         collision_checker.handle_by_cell();
         this.handleAI(delta_time);
     }

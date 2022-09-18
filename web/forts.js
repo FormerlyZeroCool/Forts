@@ -1,6 +1,12 @@
+var __classPrivateFieldGet = (this && this.__classPrivateFieldGet) || function (receiver, state, kind, f) {
+    if (kind === "a" && !f) throw new TypeError("Private accessor was defined without a getter");
+    if (typeof state === "function" ? receiver !== state || !f : !state.has(receiver)) throw new TypeError("Cannot read private member from an object whose class did not declare it");
+    return kind === "m" ? f : kind === "a" ? f.call(receiver) : f ? f.value : state.get(receiver);
+};
+var _Session_instances, _Session_join_random_game_r;
 import { SingleTouchListener, MouseDownTracker, isTouchSupported, KeyboardHandler } from './io.js';
 import { SimpleGridLayoutManager, GuiTextBox, GuiButton, GuiSpacer, getHeight, getWidth, RGB, ImageContainer } from './gui.js';
-import { random, srand, max_32_bit_signed } from './utils.js';
+import { random, srand, max_32_bit_signed, logToServer, readFromServer, sleep } from './utils.js';
 ;
 ;
 class SquareAABBCollidable {
@@ -47,7 +53,7 @@ function manhattan_distance(a, b) {
     return dx + dy;
 }
 class Faction {
-    constructor(name, color, fort_reproduction_unit_limit, load_image = false) {
+    constructor(name, color, fort_reproduction_unit_limit, base_unit_speed, load_image = false) {
         this.name = name;
         this.attack = 4 * (1 + random() / 5);
         this.avg_move_value = 0;
@@ -60,7 +66,7 @@ class Faction {
         this.unit_reproduction_per_second = Math.floor(2.5 * (0.95 + random() / 10));
         this.money_production_per_second = 10;
         this.fort_reproduction_unit_limit = fort_reproduction_unit_limit;
-        this.unit_travel_speed = Math.max(getWidth(), getHeight()) / 7.5;
+        this.unit_travel_speed = base_unit_speed * (1 + random() / 5);
         this.barrier_start_hp = 1000;
         this.barrier_attack = 1.2;
         if (load_image) {
@@ -122,8 +128,8 @@ class Unit extends SquareAABBCollidable {
         }
         else {
             const delta = this.faction.unit_travel_speed * delta_time * 1 / 1000;
-            const dy = -this.mid_y() + this.targetFort.mid_y();
-            const dx = -this.mid_x() + this.targetFort.mid_x();
+            const dy = (-this.mid_y() + this.targetFort.mid_y()) / this.faction.battleField.host_vertical_ratio;
+            const dx = (-this.mid_x() + this.targetFort.mid_x()) / this.faction.battleField.host_horizontal_ratio;
             const dist = Math.sqrt(dy * dy + dx * dx);
             const norm_dy = dy / dist;
             const norm_dx = dx / dist;
@@ -195,7 +201,7 @@ class Fort extends SquareAABBCollidable {
         super(x, y, width, height);
         this.faction = faction;
         this.last_update_unit_reproduction = Date.now();
-        this.last_update_units_leaving = Date.now();
+        this.last_update_units_leaving = 0;
         this.units = [];
         this.leaving_units = [];
         this.font_size = Math.ceil(this.faction.battleField.fort_dim * 3 / 8);
@@ -203,15 +209,19 @@ class Fort extends SquareAABBCollidable {
     }
     update_state(delta_time) {
         //reproduce new units
-        if (this.units.length + this.leaving_units.length < this.faction.fort_reproduction_unit_limit && Date.now() - this.last_update_unit_reproduction > (1000 / this.faction.unit_reproduction_per_second)) {
-            const head = this.units.pop();
-            this.units.push(new Unit(this.faction, this, this.mid_x(), this.mid_y()));
-            if (head)
-                this.units.push(head);
-            this.last_update_unit_reproduction = Date.now();
-        }
+        if (this.faction.battleField.game.session.is_host)
+            if (this.units.length + this.leaving_units.length < this.faction.fort_reproduction_unit_limit && Date.now() - this.last_update_unit_reproduction > (1000 / this.faction.unit_reproduction_per_second)) {
+                const head = this.units.pop();
+                this.units.push(new Unit(this.faction, this, this.mid_x(), this.mid_y()));
+                if (head)
+                    this.units.push(head);
+                this.last_update_unit_reproduction = Date.now();
+            }
+        this.timed_send();
+    }
+    timed_send() {
         //send out leaving units
-        if (Date.now() - this.last_update_units_leaving > 100 && this.faction.battleField.traveling_units.length < 5000) {
+        if (Date.now() - this.last_update_units_leaving > 100 && this.faction.battleField.traveling_units.length < this.faction.battleField.max_traveling_units) {
             const limit = Math.min(3, this.leaving_units.length);
             for (let i = 0; i < limit; i++) {
                 const unit = this.leaving_units.pop();
@@ -448,7 +458,6 @@ class FieldMap {
                         barrier.colliding = 30;
                         unit.attack(barrier);
                         barrier.attack(unit);
-                        unit.render = true;
                         if (barrier.hp <= 0) {
                             const barrier_index = this.field.barriers.indexOf(barrier);
                             if (barrier_index !== -1)
@@ -537,6 +546,8 @@ class BattleField {
     //has list of factions
     //factions have offense/defense stats all owned forts take on, and attacking units take on
     constructor(game, dimensions, factions, fort_dim, fort_count) {
+        this.host_horizontal_ratio = 1;
+        this.host_vertical_ratio = 1;
         this.game = game;
         this.max_traveling_units = 1200;
         this.max_units_per_cell = 10;
@@ -561,15 +572,169 @@ class BattleField {
                 factions_copy.push(to_copy);
         }
         for (let i = 0; i < fort_count - 1; i++) {
-            const placed_fort = this.place_random_fort(factions_copy);
-            const faction_index = factions_copy.indexOf(placed_fort.faction);
-            if (faction_index > 0)
-                factions_copy.splice(faction_index, 1);
+            const placed_fort = this.place_random_fort([this.factions[0]]);
         }
-        this.place_random_fort([this.player_faction()]);
+        for (let i = 0; i < this.factions.length; i++) {
+            this.place_random_fort([this.factions[i]]);
+        }
         for (let i = 0; i < fort_count * 2; i++) {
             this.unused_barriers.push(new Barrier(this, this.player_faction(), 0, 0));
         }
+    }
+    get_faction_index_map() {
+        const map = new Map();
+        for (let i = 0; i < this.factions.length; i++) {
+            map.set(this.factions[i], i);
+        }
+        return map;
+    }
+    get_fort_index_map() {
+        const map = new Map();
+        for (let i = 0; i < this.forts.length; i++) {
+            map.set(this.forts[i], i);
+        }
+        return map;
+    }
+    normalize_as_int(dim) {
+        return [dim[0] / this.width() * 10000, dim[1] / this.height() * 10000];
+    }
+    normals_to_point(dim) {
+        return [dim[0] / 10000 * this.width(), dim[1] / 10000 * this.height()];
+    }
+    encode_display_data_state() {
+        const file_size_header_size = 1;
+        const game_id_and_host_info = 2;
+        const screen_dim = 1;
+        const fort_count_size = 1;
+        const unit_count_size = 1;
+        const barrier_count_size = 1;
+        const faction_data = this.factions.length;
+        const file_size = /*2 * this.traveling_units.length + */ faction_data + screen_dim + game_id_and_host_info + this.barriers.length + 2 * this.forts.length +
+            file_size_header_size + fort_count_size + unit_count_size + barrier_count_size;
+        //file header total file length, 
+        //fort info fort count, then for each fort owning faction in 4 bits, and count units remaining 28
+        //then traveling unit info 
+        //total units then per unit 14 bits for x and y, and 3 bits for faction, and 1 bit for whether or not to render
+        //barriers 14 bits for x and y, 4 bits for faction
+        const data = [];
+        for (let i = 0; i < file_size; i++) {
+            data.push(-1);
+        }
+        const faction_map = this.get_faction_index_map();
+        const fort_map = this.get_fort_index_map();
+        data[0] = file_size;
+        data[1] = (this.dimensions[2] << 16) | this.dimensions[3];
+        data[2] = this.game.session.game_id;
+        data[3] = this.game.session.id;
+        data[4] = this.forts.length;
+        let i = 5;
+        for (let j = 0; j < this.forts.length; j++, i++) {
+            const norm = this.normalize_as_int([this.forts[j].x, this.forts[j].y]);
+            data[i] = (faction_map.get(this.forts[j].faction) << 28) | (norm[0] << 14) | norm[1];
+            i++;
+            const targetFort = this.forts[j].leaving_units.length !== 0 ? this.forts[j].leaving_units[0].targetFort : this.forts[j];
+            data[i] = (this.forts[j].units.length << 18) | (this.forts[j].leaving_units.length << 4) | fort_map.get(targetFort);
+        }
+        /*
+        data[i++] = this.traveling_units.length;
+        for(let j = 0; j < this.traveling_units.length; j++, i++)
+        {
+            const unit = this.traveling_units[j];
+            data[i] = (faction_map.get(unit.faction)! << 28) | (unit.x << 14) | unit.y;
+            i++;
+            data[i] = (+unit.render << 31) | fort_map.get(unit.targetFort)!;
+        }*/
+        data[i++] = this.barriers.length;
+        for (let j = 0; j < this.barriers.length; j++, i++) {
+            const barrier = this.barriers[j];
+            const norm = this.normalize_as_int([barrier.x, barrier.y]);
+            data[i] = (faction_map.get(barrier.faction) << 28) | (norm[0] << 14) | norm[1];
+        }
+        for (let j = 0; j < this.factions.length; j++, i++) {
+            const faction = this.factions[j];
+            data[i] = (faction.unit_travel_speed << 16) | (faction.fort_defense << 8) | (faction.unit_defense);
+        }
+        return data;
+    }
+    load_encoded_display_state(data) {
+        //this.traveling_units = [];
+        this.barriers = [];
+        const file_size = data[0];
+        const host_width = (data[1] >> 16) & ((1 << 16) - 1);
+        const host_height = data[1] & ((1 << 16) - 1);
+        this.host_horizontal_ratio = host_width / this.dimensions[2];
+        this.host_vertical_ratio = host_height / this.dimensions[3];
+        this.game.session.game_id = data[2];
+        data[3] = this.game.session.id;
+        let i = 4;
+        const forts_count = data[i++];
+        for (let i = 0; i < this.forts.length; i++) {
+            this.forts[i].units = [];
+            this.forts[i].leaving_units = [];
+        }
+        if (forts_count < this.forts.length) {
+            this.forts.splice(0, this.forts.length - forts_count);
+        }
+        for (let i = this.forts.length; i < forts_count; i++) {
+            this.place_fort(this.factions[0], 0, 0);
+        }
+        for (let j = 0; j < forts_count; j++, i++) {
+            const faction = data[i] >> 28;
+            const x = (data[i] >> 14) & ((1 << 14) - 1);
+            const y = (data[i]) & ((1 << 14) - 1);
+            const point = this.normals_to_point([x, y]);
+            i++;
+            const units = data[i] >> 18;
+            const leaving_units = (data[i] >> 4) & ((1 << 14) - 1);
+            const target_fort = data[i] & ((1 << 4) - 1);
+            const fort = this.forts[j];
+            fort.x = point[0];
+            fort.y = point[1];
+            fort.faction = this.factions[faction];
+            for (let j = 0; j < units; j++) {
+                fort.units.push(new Unit(this.factions[faction], fort, point[0], point[1]));
+            }
+            for (let j = 0; j < leaving_units; j++) {
+                const unit = new Unit(this.factions[faction], fort, point[0], point[1]);
+                unit.targetFort = this.forts[target_fort];
+                fort.leaving_units.push(unit);
+            }
+        }
+        /*const traveling_units_count = data[i++];
+        for(let j = 0; j < traveling_units_count; j++, i++)
+        {
+            const faction = data[i] >> 28;
+            const x = data[i] >> 14 & ((1 << 14) - 1);
+            const y = data[i] & ((1 << 14) - 1);
+            i++;
+            const render:boolean = (data[i] >> 30) !== 0;
+            const target_fort_index:number = data[i] & ((1 << 30) - 1);
+            const unit = new Unit(this.factions[faction], this.forts[target_fort_index], x, y);
+            unit.currentFort = null;
+            unit.targetFort = this.forts[target_fort_index];
+            unit.render = render;
+            this.traveling_units.push(unit);
+        }*/
+        const barrier_count = data[i++];
+        for (let j = 0; j < barrier_count; j++, i++) {
+            const faction = data[i] >> 28;
+            const x = data[i] >> 14 & ((1 << 14) - 1);
+            const y = data[i] & ((1 << 14) - 1);
+            const point = this.normals_to_point([x, y]);
+            this.barriers.push(new Barrier(this, this.factions[faction], point[0], point[1]));
+        }
+        for (let j = 0; j < this.factions.length; j++, i++) {
+            const faction = this.factions[j];
+            faction.unit_travel_speed = data[i] >> 16 & ((1 << 16) - 1);
+            faction.fort_defense = data[i] >> 8 & ((1 << 8) - 1);
+            faction.unit_defense = data[i] & ((1 << 8) - 1);
+        }
+    }
+    width() {
+        return this.dimensions[2];
+    }
+    height() {
+        return this.dimensions[3];
     }
     barrier(faction, x, y) {
         const bar = new Barrier(this, faction, x, y);
@@ -621,6 +786,7 @@ class BattleField {
         let sum_power = 0;
         const hp_by_faction_map = new Map();
         const fort_index_lookup = new Map();
+        const faction_map = this.get_faction_index_map();
         for (let i = 0; i < hp_by_faction_index.length; i++) {
             hp_by_faction_map.set(this.factions[i], hp_by_faction_index[i]);
             sum_power += hp_by_faction_index[i];
@@ -649,14 +815,16 @@ class BattleField {
         for (let i = 0; i < this.traveling_units.length; i++) {
             const unit = this.traveling_units[i];
             const fort_index = fort_index_lookup.get(unit.targetFort);
-            if (unit.targetFort.get_faction() !== unit.faction) {
-                records[fort_index].attacking_force += unit.hp * (1 + unit.faction.unit_defense);
-            }
-            else {
-                records[fort_index].defense_force_inbound += unit.hp * (1 + unit.faction.unit_defense);
-            }
-            if (unit.faction === unit.faction.battleField.player_faction()) {
-                records[fort_index].en_route_from_player += unit.hp;
+            if (fort_index && records[fort_index]) {
+                if (unit.targetFort.get_faction() !== unit.faction) {
+                    records[fort_index].attacking_force += unit.hp * (1 + unit.faction.unit_defense);
+                }
+                else {
+                    records[fort_index].defense_force_inbound += unit.hp * (1 + unit.faction.unit_defense);
+                }
+                if (unit.faction === unit.faction.battleField.player_faction()) {
+                    records[fort_index].en_route_from_player += unit.hp;
+                }
             }
         }
         let calc_points = calc_points_move_early_game;
@@ -668,7 +836,7 @@ class BattleField {
         }
         for (let i = 0; i < records.length; i++) {
             const record = records[i];
-            if (record.fort.faction !== this.factions[0] && record.fort.faction !== this.factions[1]) {
+            if (faction_map.get(record.fort.faction) > 1 + this.game.session.guests) {
                 //not no faction, and not player
                 let max_points = calc_points(record, records[0], delta_time, hp_by_faction_map, sum_power);
                 let max_index = 0;
@@ -706,12 +874,21 @@ class BattleField {
                 this.max_units_per_cell--;
                 console.log("sub", this.max_units_per_cell);
             }
-            else if (delta_time < 12 && this.max_units_per_cell < 14) {
+            else if (delta_time < 12 && this.max_units_per_cell < 16) {
                 this.max_units_per_cell++;
                 console.log(this.max_units_per_cell);
             }
         }
-        this.forts.forEach(fort => fort.update_state(delta_time));
+        if (this.game.session.is_host)
+            this.forts.forEach(fort => fort.update_state(delta_time));
+        else {
+            this.forts.forEach(fort => {
+                if (fort.units.length === 0) {
+                    fort.units.push(new Unit(fort.faction, fort, fort.x, fort.y));
+                }
+                fort.timed_send();
+            });
+        }
         for (let i = 0; i < this.traveling_units.length; i++) {
             const unit = this.traveling_units[i];
             if (!unit.update_state(delta_time)) {
@@ -720,7 +897,8 @@ class BattleField {
         }
         const collision_checker = new FieldMap(this, this.traveling_units.length > this.max_traveling_units);
         collision_checker.handle_by_cell();
-        this.handleAI(delta_time);
+        if (this.game.session.is_host)
+            this.handleAI(delta_time);
     }
     check_fort_collision(object) {
         for (let i = 0; i < this.forts.length; i++) {
@@ -768,16 +946,16 @@ class BattleField {
     }
 }
 ;
+const menu_font_size = () => isTouchSupported() ? 27 : 22;
 class UpgradePanel extends SimpleGridLayoutManager {
     constructor(next, frame, attribute_name, short_name, pixelDim, x, y, alt_text = () => "", callback = () => this.default_upgrade_callback()) {
         super([1, 200], pixelDim, x, y);
         this.frame = frame;
         this.alt_text = alt_text;
-        const fontSize = isTouchSupported() ? 27 : 22;
         this.increase_function = next;
         this.attribute_name = attribute_name;
-        this.display_value = new GuiButton(callback, this.get_value() + "", pixelDim[0], fontSize * 2 + 20, fontSize + 2);
-        this.display_name = new GuiTextBox(false, pixelDim[0], this.display_value, fontSize, fontSize * 2, GuiTextBox.default);
+        this.display_value = new GuiButton(callback, this.get_value() + "", pixelDim[0], menu_font_size() * 2 + 20, menu_font_size() + 2);
+        this.display_name = new GuiTextBox(false, pixelDim[0], this.display_value, menu_font_size(), menu_font_size() * 2, GuiTextBox.default);
         this.display_name.setText(short_name);
         this.display_name.refresh();
         this.display_value.refresh();
@@ -884,32 +1062,204 @@ class UpgradeScreen extends SimpleGridLayoutManager {
     }
 }
 ;
+;
+class Session {
+    constructor(game, callback) {
+        _Session_instances.add(this);
+        this.local_game = game;
+        this.is_host = true;
+        this.guests = 0;
+        /*try{
+        readFromServer("/register_session").then(data => {
+            this.id = data.host_id;
+            this.game_id = data.game_id;
+            this.is_host = true;
+            callback(this);
+        });
+        } catch(error:any)
+        {
+            this.error = true;
+        }*/
+    }
+    registered() {
+        return this.id >= 0;
+    }
+    async re_register_session() {
+        try {
+            await readFromServer("/register_session").then(data => {
+                this.id = data.host_id;
+                this.game_id = data.game_id;
+                this.is_host = true;
+            });
+        }
+        catch (error) {
+            this.error = true;
+            return false;
+        }
+        return true;
+    }
+    async end_session() {
+        await logToServer([this.id], "/unregister_session");
+        this.id = -1;
+        this.game_id = -1;
+        this.is_host = true;
+    }
+    async check_for_guests() {
+        return await logToServer([this.game_id], "/has_guests");
+    }
+    async register_new_game_id() {
+        const game = (await logToServer([this.id, this.game_id], "/new_game"));
+        this.game_id = game.game_id;
+        this.is_host = true;
+        return this.game_id;
+    }
+    async join_game(game_id) {
+        const res = await logToServer([game_id, game_id !== this.game_id ? this.game_id : -1, this.id], "/register_guest");
+        if (res[0]) {
+            const faction_id = res[0];
+            this.local_game.currentField.player_faction_index = faction_id;
+            this.game_id = game_id;
+            this.is_host = faction_id === 1;
+            this.local_game.currentField.update_state(10);
+        }
+        else {
+            throw "error unable to register as guest too many units";
+        }
+    }
+    async join_random_game() {
+        return await __classPrivateFieldGet(this, _Session_instances, "m", _Session_join_random_game_r).call(this);
+    }
+    async post_game_state() {
+        const game = { state: this.local_game.currentField.encode_display_data_state(), game_id: this.game_id, host_id: this.id, guests: [] };
+        return await logToServer(game, "/save_game_state");
+    }
+    post_moves(moves) {
+        logToServer(moves, "/register_moves");
+    }
+    async get_game_state() {
+        return (await logToServer([this.game_id], "/get_game_state")).state;
+    }
+    async get_and_apply_moves() {
+        const moves = await logToServer([this.game_id], "/get_moves");
+        for (let i = 0; i < moves.length; i++) {
+            const move = moves[i];
+            const start_fort = this.local_game.currentField.forts[move.start_fort_id];
+            const end_fort = this.local_game.currentField.forts[move.end_fort_id];
+            if (move.start_fort_id === move.end_fort_id) {
+                start_fort.unsend_units();
+            }
+            else if (this.local_game.factions[move.faction_id] === start_fort.faction) {
+                start_fort.send_units(end_fort);
+            }
+        }
+    }
+}
+_Session_instances = new WeakSet(), _Session_join_random_game_r = async function _Session_join_random_game_r(tries = 0, max_tries = 50) {
+    if (!this.registered())
+        this.re_register_session();
+    const res = await logToServer([this.id, this.game_id], '/request_join_random_game');
+    if (res) {
+        const game_id = res[0];
+        const faction_id = res[1];
+        if (game_id && game_id !== -1) {
+            this.game_id = game_id;
+            this.is_host = faction_id === 1;
+            this.local_game.currentField.player_faction_index = faction_id;
+            this.local_game.currentField.update_state(10);
+            return true;
+        }
+        else if (tries > max_tries) {
+            return false;
+        }
+        else {
+            await sleep(150);
+            return await __classPrivateFieldGet(this, _Session_instances, "m", _Session_join_random_game_r).call(this, tries + 1, max_tries);
+        }
+    }
+    else {
+        throw "Error could not connect to server";
+    }
+};
+;
+class Timed_Caller {
+    constructor(callback, cool_down) {
+        this.cool_down = cool_down;
+        this.callback = callback;
+        this.last_call_time = 0;
+    }
+    try_call() {
+        const delta_time = Date.now() - this.last_call_time;
+        if (delta_time > this.cool_down) {
+            this.callback(delta_time);
+            this.last_call_time = Date.now();
+            return true;
+        }
+        return false;
+    }
+}
+;
+class ServerSync {
+    constructor(session) {
+        this.session = session;
+        this.update_server = new Timed_Caller((dt) => {
+            this.session.post_game_state();
+        }, 30);
+        this.pull_server_moves = new Timed_Caller((dt) => {
+            this.session.get_and_apply_moves();
+        }, 10);
+        this.pull_server_state = new Timed_Caller(async (dt) => {
+            this.session.local_game.currentField.load_encoded_display_state(await this.session.get_game_state());
+        }, 30);
+        this.check_guests_count = new Timed_Caller(async (dt) => {
+            const res = (await logToServer([this.session.game_id], "/get_count_guests"))[0];
+            this.session.guests = res ? res : 0;
+        }, 250);
+        window.onbeforeunload = () => {
+            this.session.end_session();
+        };
+    }
+    sync() {
+        if (this.session.registered()) {
+            this.check_guests_count.try_call();
+            if (this.session.is_host) {
+                this.update_server.try_call();
+                this.pull_server_moves.try_call();
+            }
+            else {
+                this.pull_server_state.try_call();
+            }
+        }
+    }
+}
+;
 class Game {
-    constructor(canvas) {
+    constructor(main_controller, canvas, width, height) {
+        this.main_controller = main_controller;
+        this.session = new Session(this, async () => { console.log("Session established with server gameid:", this.session.game_id); });
+        this.server_sync = new ServerSync(this.session);
         this.background = new ImageContainer("background", `./images/${"background"}.png`);
         this.dev_mode = false;
-        this.joint_attack_mode = false;
+        this.joint_attack_mode = true;
         this.regular_control = true;
         this.difficulty = 0;
         this.wins = 0;
         this.losses = 0;
         this.factions = [];
         this.start_touch_forts = [];
-        const width = canvas.width;
-        const height = canvas.height;
         this.game_start = Date.now();
         this.mouse_down_tracker = new MouseDownTracker();
-        this.factions.push(new Faction("none", new RGB(125, 125, 125), 20));
+        this.faction_base_speed = Math.max(getWidth(), getHeight()) / 7.5;
+        this.factions.push(new Faction("none", new RGB(125, 125, 125), 20, this.faction_base_speed));
         this.factions[0].attack = 2;
         this.factions[0].unit_reproduction_per_second = 1;
         this.game_over = true;
         srand(Math.random() * max_32_bit_signed);
         // seeds 607, 197 are pretty good so far lol
         for (let i = 0; i < 5; i++) {
-            this.factions.push(new Faction("faction" + i, new RGB(random() * 128 + 128, random() * 128 + 128, random() * 128 + 128), 120, true));
+            this.factions.push(new Faction("faction" + i, new RGB(random() * 128 + 128, random() * 128 + 128, random() * 128 + 128), 120, this.faction_base_speed, true));
         }
         this.factions[1].unit_reproduction_per_second += 0.3;
-        this.currentField = new BattleField(this, [0, 0, width, height], this.factions, Math.max(width, height) / (isTouchSupported() ? 11 : 15), Math.floor(Math.random() * 5) + 10);
+        this.currentField = new BattleField(this, [0, 0, width, height], this.factions, this.calc_fort_dim(width, height), Math.floor(Math.random() * 5) + 5);
         //this.factions[0].battleField = this.currentField;
         const is_player = (e) => this.currentField.find_nearest_fort(e.touchPos[0], e.touchPos[1]).faction === this.currentField.player_faction();
         this.keyboard_handler = new KeyboardHandler();
@@ -925,22 +1275,24 @@ class Game {
                     break;
                 }
             }
-            if (!collision && !point.check_collision_gui(this.control_state_toggle_group, this.control_state_toggle_group.x, this.control_state_toggle_group.y)) {
+            if (!collision && !point.check_collision_gui(main_controller.control_state_toggle_group, main_controller.control_state_toggle_group.x, main_controller.control_state_toggle_group.y)) {
                 this.currentField.place_barrier(this.currentField.player_faction(), e.touchPos[0], e.touchPos[1]);
             }
         });
         this.touch_listener.registerCallBack("touchstart", (e) => is_player(e) && this.regular_control, (event) => {
             this.start_touch_forts.splice(0, this.start_touch_forts.length);
             const nearest_fort = this.currentField.find_nearest_fort(event.touchPos[0], event.touchPos[1]);
-            if (nearest_fort.faction === this.currentField.player_faction())
+            if (nearest_fort.faction === this.currentField.player_faction()) {
                 this.start_touch_forts.push(nearest_fort);
+            }
         });
         const end_selection_possible = (e) => this.start_touch_forts.length !== 0;
         this.touch_listener.registerCallBack("touchmove", (e) => end_selection_possible(e) && this.joint_attack_mode && this.regular_control, (event) => {
             const nearest_fort = this.currentField.find_nearest_fort(event.touchPos[0], event.touchPos[1]);
             this.end_touch_fort = nearest_fort;
-            if (nearest_fort.faction === this.currentField.player_faction())
+            if (nearest_fort.faction === this.currentField.player_faction() && nearest_fort.check_collision(this.get_cursor())) {
                 this.start_touch_forts.push(nearest_fort);
+            }
         });
         this.touch_listener.registerCallBack("touchmove", (e) => end_selection_possible(e) && !this.joint_attack_mode && this.regular_control, (event) => {
             const nearest_fort = this.currentField.find_nearest_fort(event.touchPos[0], event.touchPos[1]);
@@ -948,14 +1300,23 @@ class Game {
         });
         this.touch_listener.registerCallBack("touchend", (e) => end_selection_possible(e) && this.regular_control, (event) => {
             this.end_touch_fort = this.currentField.find_nearest_fort(event.touchPos[0], event.touchPos[1]);
-            for (let i = 0; i < this.start_touch_forts.length; i++) {
-                const start_fort = this.start_touch_forts[i];
-                if (start_fort.faction === this.currentField.player_faction()) {
-                    if (start_fort === this.end_touch_fort) {
-                        start_fort.unsend_units();
+            if (this.end_touch_fort.check_collision(this.get_cursor())) {
+                const moves = [];
+                for (let i = 0; i < this.start_touch_forts.length; i++) {
+                    const start_fort = this.start_touch_forts[i];
+                    moves.push({ game_id: this.session.game_id, faction_id: this.currentField.player_faction_index, start_fort_id: this.currentField.forts.indexOf(start_fort), end_fort_id: this.currentField.forts.indexOf(this.end_touch_fort) });
+                    if (start_fort.faction === this.currentField.player_faction()) {
+                        if (start_fort === this.end_touch_fort) {
+                            start_fort.unsend_units();
+                        }
+                        else {
+                            start_fort.send_units(this.end_touch_fort);
+                        }
                     }
-                    else {
-                        start_fort.send_units(this.end_touch_fort);
+                }
+                if (this.session.registered()) {
+                    if (!this.session.is_host) {
+                        this.session.post_moves(moves);
                     }
                 }
             }
@@ -967,25 +1328,8 @@ class Game {
             this.joint_attack_mode = !this.joint_attack_mode;
         });
         this.currentField.update_state(1);
-        window.addEventListener("load", () => setTimeout(() => this.currentField.draw(canvas, canvas.getContext("2d")), 250));
-        this.control_state_toggle_group = new SimpleGridLayoutManager([1, 1], [this.currentField.fort_dim * 2, this.currentField.fort_dim * 3 / 4]);
-        this.control_state_toggle_group.x = this.currentField.dimensions[2] - this.control_state_toggle_group.pixelDim[0];
-        this.control_state_toggle_group.y = this.currentField.dimensions[3] - this.control_state_toggle_group.pixelDim[1];
-        const b_state = "Place Barriers";
-        const c_state = "Control Game";
-        this.button_toggle = new GuiButton(() => { }, c_state, this.control_state_toggle_group.pixelDim[0]);
-        this.button_toggle.callback = () => {
-            if (this.button_toggle.text === b_state) {
-                this.button_toggle.text = c_state;
-                this.regular_control = true;
-            }
-            else {
-                this.button_toggle.text = b_state;
-                this.regular_control = false;
-            }
-        };
-        this.control_state_toggle_group.addElement(this.button_toggle);
-        this.control_state_toggle_group.createHandlers(this.keyboard_handler, this.touch_listener);
+        window.addEventListener("load", () => setTimeout(() => this.currentField.draw(canvas, canvas.getContext("2d")), 750));
+        this.server_sync = new ServerSync(this.session);
     }
     is_faction_on_field(faction) {
         let counter = 0;
@@ -1003,6 +1347,9 @@ class Game {
             this.factions[i].auto_upgrade();
         }
     }
+    calc_fort_dim(width, height) {
+        return Math.max(width, height) / (isTouchSupported() ? 11 : 15);
+    }
     end_game() {
         for (let i = 0; i < this.difficulty; i++)
             this.upgrade_ai_factions();
@@ -1014,6 +1361,7 @@ class Game {
         }
     }
     update_state(delta_time) {
+        this.server_sync.sync();
         if (this.game_over) {
             if (!this.upgrade_menu.active()) // only once per game over this if will be true
              {
@@ -1026,34 +1374,40 @@ class Game {
             this.game_over = this.is_game_over();
         }
     }
-    draw(canvas, ctx) {
-        ctx.imageSmoothingEnabled = false;
-        ctx.clearRect(this.currentField.dimensions[0], this.currentField.dimensions[1], this.currentField.dimensions[2], this.currentField.dimensions[3]);
+    get_cursor() {
+        const fort_dim = this.currentField.fort_dim;
+        return new SquareAABBCollidable(this.touch_listener.touchPos[0] - fort_dim / 2, this.touch_listener.touchPos[1] - fort_dim / 2, fort_dim, fort_dim);
+    }
+    draw(dt, canvas, ctx) {
         if (!this.game_over) {
             this.currentField.draw(canvas, ctx);
             if (this.regular_control) {
-                if (this.mouse_down_tracker.mouseDown && this.start_touch_forts.length && this.end_touch_fort) {
+                if (this.mouse_down_tracker.mouseDown && this.start_touch_forts.length) {
                     ctx.strokeStyle = new RGB(125, 125, 125, 125).htmlRBGA();
                     ctx.lineWidth = 15;
                     ctx.beginPath();
+                    const fort_dim = this.currentField.fort_dim;
                     for (let i = 0; i < this.start_touch_forts.length; i++) {
                         const start_fort = this.start_touch_forts[i];
-                        const end_fort = this.end_touch_fort;
+                        let end_fort = this.get_cursor();
+                        if (this.end_touch_fort && this.end_touch_fort.check_collision(end_fort)) {
+                            end_fort = this.end_touch_fort;
+                        }
                         const odx = start_fort.mid_x() - end_fort.mid_x();
                         const ody = start_fort.mid_y() - end_fort.mid_y();
                         const dist = Math.sqrt(odx * odx + ody * ody);
                         const ndx = odx / dist;
                         const ndy = ody / dist;
-                        let sx = start_fort.mid_x() - ndx * this.currentField.fort_dim;
-                        let sy = start_fort.mid_y() - ndy * this.currentField.fort_dim;
-                        if (Math.sqrt(odx * odx + ody * ody) <= this.currentField.fort_dim) {
+                        let sx = start_fort.mid_x() - ndx * fort_dim;
+                        let sy = start_fort.mid_y() - ndy * fort_dim;
+                        if (Math.sqrt(odx * odx + ody * ody) <= fort_dim) {
                             sx = start_fort.mid_x();
                             sy = start_fort.mid_y();
                         }
                         ctx.moveTo(sx, sy);
-                        ctx.lineTo(end_fort.mid_x() + ndx * (this.currentField.fort_dim), end_fort.mid_y() + ndy * (this.currentField.fort_dim));
-                        ctx.moveTo(end_fort.mid_x() + this.currentField.fort_dim, end_fort.mid_y());
-                        ctx.arc(end_fort.mid_x(), end_fort.mid_y(), this.currentField.fort_dim, 0, 2 * Math.PI);
+                        ctx.lineTo(end_fort.mid_x() + ndx * (fort_dim), end_fort.mid_y() + ndy * (fort_dim));
+                        ctx.moveTo(end_fort.mid_x() + fort_dim, end_fort.mid_y());
+                        ctx.arc(end_fort.mid_x(), end_fort.mid_y(), fort_dim, 0, 2 * Math.PI);
                     }
                     ctx.stroke();
                 }
@@ -1069,12 +1423,14 @@ class Game {
             }
         }
         else {
-            ctx.drawImage(this.currentField.canvas, this.currentField.dimensions[0], this.currentField.dimensions[1]);
+            if (this.session.is_host)
+                ctx.drawImage(this.currentField.canvas, this.currentField.dimensions[0], this.currentField.dimensions[1]);
+            else {
+                this.currentField.update_state(dt);
+                this.currentField.draw(canvas, ctx);
+            }
             this.upgrade_menu.draw(ctx);
         }
-        this.control_state_toggle_group.activate();
-        this.control_state_toggle_group.refresh();
-        this.control_state_toggle_group.draw(ctx);
     }
     time_elapsed() {
         return Date.now() - this.game_start;
@@ -1118,9 +1474,22 @@ class Game {
         let count = 0;
         for (let i = 0; i < this.currentField.forts.length; i++) {
             count += +(this.currentField.forts[i].faction === this.currentField.player_faction());
-            //count += +(this.currentField.forts[i].faction === this.currentField.factions[0]);
         }
         return count;
+    }
+    players_fort_count() {
+        const start = 1;
+        const end = start + this.session.guests;
+        const faction_indeces = this.currentField.get_faction_index_map();
+        let sum = 0;
+        for (let i = 0; i < this.currentField.forts.length; i++) {
+            const fort = this.currentField.forts[i];
+            const faction_index = faction_indeces.get(fort.faction);
+            if (faction_index >= start && faction_index <= end) {
+                sum++;
+            }
+        }
+        return sum;
     }
     null_fort_count() {
         let count = 0;
@@ -1130,18 +1499,31 @@ class Game {
         }
         return count;
     }
+    get_active_players() {
+        const faction_map = this.currentField.get_faction_index_map();
+        const players = [];
+        for (let i = 0; i < this.currentField.forts.length; i++) {
+            const fort = this.currentField.forts[i];
+            const faction_index = faction_map.get(fort.faction);
+            if (faction_index && players.indexOf(faction_index) === -1 && faction_index > 0 && faction_index <= 1 + this.session.guests) {
+                players.push(faction_index);
+            }
+        }
+        return players;
+    }
     is_game_over() {
         const data = this.hp_by_faction();
         let sum = 0;
-        for (let i = 2; i < data.length; i++) {
+        for (let i = 2 + this.session.guests; i < data.length; i++) {
             sum += data[i];
         }
-        const pfc = this.player_fort_count();
+        const pfc = this.players_fort_count();
         const nfc = this.null_fort_count();
+        const active_players = this.get_active_players();
         if (pfc === 0 && data[this.currentField.player_faction_index] === 0) {
             return true;
         }
-        if (pfc + nfc === this.currentField.forts.length && sum === 0)
+        if (active_players.length === 1 && pfc + nfc === this.currentField.forts.length)
             return true;
         return false;
     }
@@ -1170,9 +1552,145 @@ class Game {
         this.upgrade_menu.deactivate();
         this.game_over = false;
         this.game_start = Date.now();
-        this.currentField = new BattleField(this, this.currentField.dimensions, this.factions, this.currentField.fort_dim, Math.floor(Math.random() * 5) + 10);
+        const faction_id = this.currentField.player_faction_index;
+        this.currentField = new BattleField(this, this.currentField.dimensions, this.factions, this.currentField.fort_dim, Math.floor(Math.random() * 5) + 5);
+        this.currentField.player_faction_index = faction_id;
     }
 }
+class MainMenu extends SimpleGridLayoutManager {
+    constructor(controller, x, y, width, height) {
+        super([2, 6], [width, height], x, y);
+        this.btn_join_local_game = new GuiButton(() => {
+            controller.game.session.end_session();
+            this.deactivate();
+        }, "Single Player", width, height / 3, menu_font_size());
+        this.addElement(this.btn_join_local_game);
+        this.btn_join_random_game = new GuiButton(() => {
+            const join = async () => {
+                if (!controller.game.session.registered())
+                    await controller.game.session.re_register_session();
+                const success = await controller.game.session.join_random_game();
+                if (success) {
+                    controller.awaiting_guests = true;
+                    this.deactivate();
+                }
+                else {
+                    this.activate();
+                    console.log("Could not find match");
+                }
+            };
+            join();
+        }, "Matchmaking", width / 2, height / 3, menu_font_size());
+        this.addElement(this.btn_join_random_game);
+        this.addElement(new GuiButton(() => {
+            const join = async () => {
+                if (!controller.game.session.registered())
+                    await controller.game.session.re_register_session();
+                const success = await controller.game.session.register_new_game_id();
+                this.deactivate();
+            };
+            join();
+        }, "Host Game", width / 2, height / 3, menu_font_size()));
+        this.btn_join_specified_game = new GuiButton(() => {
+            const game_id = this.tb_game_id.asNumber.get();
+            const join = async () => {
+                if (!controller.game.session.registered())
+                    !controller.game.session.re_register_session();
+                if (game_id) //set controller for status
+                 {
+                    await controller.game.session.join_game(game_id);
+                    this.deactivate();
+                }
+                else {
+                    this.activate();
+                }
+            };
+            join();
+        }, "Join by game id", width / 2, height / 3, menu_font_size());
+        this.tb_game_id = new GuiTextBox(true, width / 2, this.btn_join_specified_game, menu_font_size());
+        this.lbl_game_id = new GuiButton(() => { }, "Game ID:", width / 2, height / 6, menu_font_size());
+        const tb_group = new SimpleGridLayoutManager([1, 2], [width / 2, height / 3]);
+        tb_group.addElement(this.lbl_game_id);
+        tb_group.addElement(this.tb_game_id);
+        this.addElement(tb_group);
+        this.addElement(this.btn_join_specified_game);
+    }
+    activate() {
+        super.activate();
+        this.elements.forEach(el => el.activate());
+        this.tb_game_id.deactivate();
+    }
+}
+;
+class MainController {
+    constructor(canvas, width, height) {
+        this.awaiting_guests = false;
+        this.game = new Game(this, canvas, width, height);
+        this.main_menu = new MainMenu(this, width / 4, height / 4, width / 2, height * (isTouchSupported() ? 1 / 4 : 3 / 8));
+        this.main_menu.createHandlers(this.game.keyboard_handler, this.game.touch_listener);
+        this.main_menu.refresh();
+        this.main_menu.activate();
+        this.control_state_toggle_group = new SimpleGridLayoutManager([2, 1], [this.game.currentField.fort_dim * 4, 40]);
+        this.control_state_toggle_group.x = this.game.currentField.dimensions[2] - this.control_state_toggle_group.pixelDim[0];
+        this.control_state_toggle_group.y = this.game.currentField.dimensions[3] - this.control_state_toggle_group.pixelDim[1] - 20;
+        const b_state = "Place Barriers";
+        const c_state = "Control Game";
+        this.button_toggle = new GuiButton(() => { }, c_state, this.control_state_toggle_group.pixelDim[0] / 2, this.control_state_toggle_group.pixelDim[1], 18);
+        //this.control_state_toggle_group.pixelDim[1] = this.button_toggle.height();
+        this.button_toggle.callback = () => {
+            if (!this.game.regular_control) {
+                this.button_toggle.text = c_state;
+                this.game.regular_control = true;
+            }
+            else {
+                this.button_toggle.text = b_state;
+                this.game.regular_control = false;
+            }
+        };
+        this.control_state_toggle_group.addElement(this.button_toggle);
+        this.control_state_toggle_group.addElement(new GuiButton(() => {
+            this.game.upgrade_menu.deactivate();
+            if (!this.main_menu.active())
+                this.main_menu.activate();
+            else
+                this.main_menu.deactivate();
+        }, "Pause", this.control_state_toggle_group.pixelDim[0] / 2, this.control_state_toggle_group.pixelDim[1], 18));
+        this.control_state_toggle_group.createHandlers(this.game.keyboard_handler, this.game.touch_listener);
+    }
+    update_state(delta_time) {
+        if (this.main_menu.active()) {
+            this.main_menu.refresh();
+        }
+        else {
+            this.game.update_state(delta_time);
+        }
+    }
+    draw(dt, canvas, ctx) {
+        ctx.imageSmoothingEnabled = false;
+        ctx.clearRect(this.game.currentField.dimensions[0], this.game.currentField.dimensions[1], this.game.currentField.dimensions[2], this.game.currentField.dimensions[3]);
+        if (this.main_menu.active()) {
+            if (this.game.session.is_host)
+                ctx.drawImage(this.game.currentField.canvas, this.game.currentField.dimensions[0], this.game.currentField.dimensions[1]);
+            else {
+                this.game.currentField.update_state(dt);
+                this.game.currentField.draw(canvas, ctx);
+            }
+            this.main_menu.draw(ctx);
+        }
+        else {
+            this.game.draw(dt, canvas, ctx);
+        }
+        if (this.game.session.registered()) {
+            ctx.font = `${18}px ${"Helvetica"}`;
+            const game_info = `Session ID: ${this.game.session.id}, Game ID: ${this.game.session.game_id}, Faction ID: ${this.game.currentField.player_faction_index}. ${this.awaiting_guests ? `Awaiting guests. ${this.game.session.guests} joined` : `${this.game.session.guests} guests joined`}`;
+            //ctx.measureText(game_info).width;
+            ctx.fillText(game_info, 20, 20);
+        }
+        this.control_state_toggle_group.activate();
+        this.control_state_toggle_group.draw(ctx);
+    }
+}
+;
 async function main() {
     const canvas = document.getElementById("screen");
     let maybectx = canvas.getContext("2d");
@@ -1185,13 +1703,17 @@ async function main() {
     canvas.addEventListener("wheel", (e) => {
         //e.preventDefault();
     });
+    //setInterval(() => logToServer(game_local.currentField.encode_display_data_state(), "/data"), 500)
     //setup rendering canvas, and view
     canvas.width = getWidth();
     canvas.height = getHeight();
     canvas.style.cursor = "pointer";
     let counter = 0;
     const touchScreen = isTouchSupported();
-    const game_local = new Game(canvas);
+    let height = getHeight();
+    let width = getWidth();
+    const main_controller = new MainController(canvas, width, height);
+    const game_local = main_controller.game;
     window.game = game_local;
     window.player_faction = game_local.currentField.player_faction();
     window.factions = window.game.factions;
@@ -1200,8 +1722,8 @@ async function main() {
     const drawLoop = () => {
         dt += Date.now() - start;
         start = Date.now();
-        game_local.update_state(dt);
-        game_local.draw(canvas, ctx);
+        main_controller.update_state(dt);
+        main_controller.draw(dt, canvas, ctx);
         dt = Date.now() - start;
         start = Date.now();
         requestAnimationFrame(drawLoop);

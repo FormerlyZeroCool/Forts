@@ -201,14 +201,30 @@ export async function fetchImage(url) {
     img.src = URL.createObjectURL(await (await fetch(url)).blob());
     return img;
 }
-export function logToServer(data) {
-    fetch("/data", {
+export async function logBinaryToServer(data, path) {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", path, false);
+    xhr.send(data);
+}
+export async function logToServer(data, path) {
+    const res = await fetch(path, {
         method: "POST",
         headers: {
             "Content-Type": "application/json"
         },
         body: JSON.stringify(data)
-    }).then(res => { console.log("Request complete! response:", data); });
+    });
+    const json = await res.json();
+    return json;
+}
+export async function readFromServer(path) {
+    const data = await fetch(path, {
+        method: "GET",
+        headers: {
+            "Content-Type": "application/json"
+        }
+    });
+    return await data.json();
 }
 export function saveBlob(blob, fileName) {
     const a = document.createElement("a");

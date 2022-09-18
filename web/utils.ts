@@ -261,16 +261,31 @@ export async function fetchImage(url:string):Promise<HTMLImageElement>
     img.src =  URL.createObjectURL(await (await fetch(url)).blob());
     return img;
 }
-export function logToServer(data:any):void
+export async function logBinaryToServer(data:Uint32Array | Uint16Array | Uint8Array, path:string):Promise<any>
 {
-    fetch("/data", {
-        method: "POST", 
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", path, false);
+    xhr.send(data);
+}
+export async function logToServer(data, path):Promise<any> {
+    const res = await fetch(path, {
+        method: "POST",
         headers: {
             "Content-Type": "application/json"
         },
         body: JSON.stringify(data)
-      }).then(res => {console.log("Request complete! response:", data);});
-
+    });
+    const json = await res.json();
+    return json;
+}
+export async function readFromServer(path) {
+    const data = await fetch(path, {
+        method: "GET",
+        headers: {
+            "Content-Type": "application/json"
+        }
+    });
+    return await data.json();
 }
 export function saveBlob(blob:Blob, fileName:string){
     const a:HTMLAnchorElement = document.createElement("a");

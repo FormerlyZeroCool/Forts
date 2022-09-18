@@ -226,7 +226,7 @@ export class Pair {
 }
 ;
 export class ImageContainer {
-    constructor(imageName, imagePath, callBack = (img) => console.log(imagePath + " loaded.", img)) {
+    constructor(imageName, imagePath, callBack = (img) => "") {
         this.image = null;
         if (imagePath && imageName)
             fetchImage(imagePath).then(img => {
@@ -962,7 +962,7 @@ export class GuiButton {
         const textHeight = this.fontSize;
         ctx.strokeStyle = "#FFFFFF";
         ctx.lineWidth = 4;
-        if (textWidth < this.width()) {
+        if (textWidth < this.width() - 10) {
             ctx.strokeText(this.text, this.width() / 2 - textWidth / 2, this.height() / 2 + textHeight / 2, this.width());
             ctx.fillText(this.text, this.width() / 2 - textWidth / 2, this.height() / 2 + textHeight / 2, this.width());
         }
@@ -1298,6 +1298,7 @@ export class GuiTextBox {
                         }
                     }
                     this.drawInternalAndClear();
+                    break;
             }
         }
     }

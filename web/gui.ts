@@ -272,7 +272,7 @@ export class Pair<T,U = T> {
 export class ImageContainer {
     image:HTMLImageElement | HTMLCanvasElement | null;
     name:string;
-    constructor(imageName:string, imagePath:string, callBack:((image:HTMLImageElement) => void) = (img) => console.log(imagePath + " loaded.", img))
+    constructor(imageName:string, imagePath:string, callBack:((image:HTMLImageElement) => void) = (img) => "")
     {
         this.image = null;
         if(imagePath && imageName)
@@ -1219,7 +1219,7 @@ export class GuiButton implements GuiElement {
         const textHeight:number = this.fontSize;
         ctx.strokeStyle = "#FFFFFF";
         ctx.lineWidth = 4;
-        if(textWidth < this.width())
+        if(textWidth < this.width() - 10)
         {
             ctx.strokeText(this.text, this.width() / 2 - textWidth / 2, this.height() / 2 + textHeight / 2, this.width());
             ctx.fillText(this.text, this.width() / 2 - textWidth / 2, this.height() / 2 + textHeight / 2, this.width());
@@ -1657,7 +1657,7 @@ export class GuiTextBox implements GuiElement {
                     }
                 }
                 this.drawInternalAndClear();
-
+                break;
             }
         }
     }

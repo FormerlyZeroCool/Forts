@@ -3,7 +3,7 @@
 <h2>
 <a href="web/index.html">Click here to play!</a>
 </h2>
-
+Pixel artwork primarily by The_Vegan, with some small changes by othes.<br><br>
 <h3>The Story</h3>
 The Apatao have for millions of years existed on their home planet Apatite.<br>
 They have long held great esteem for all the beings on Earth, and every planet they cohabitate with the native species<br>

@@ -55,7 +55,7 @@ function manhattan_distance(a, b) {
 class Faction {
     constructor(name, color, fort_reproduction_unit_limit, base_unit_speed, load_image = false) {
         this.name = name;
-        this.attack = 4 * (1 + random() / 5);
+        this.attack = 9 * (1 + random() / 5);
         this.avg_move_value = 0;
         this.sum_move_points = 400 * (0.5 + random());
         this.count_moves = 1;

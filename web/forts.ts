@@ -627,7 +627,7 @@ class FieldMap {
                     
                         if(unit.hp <= 0)
                         {
-                            this.field.traveling_units.splice(this.field.traveling_units.indexOf(unit), 1);
+                            this.field.delete_traveling_unit(this.field.traveling_units.indexOf(unit));
                             units.splice(i, 1);
                             break;
                         }
@@ -646,13 +646,13 @@ class FieldMap {
                             other.render = true;
                             unit.render = true;
                             if(other.hp <= 0){
-                                this.field.traveling_units.splice(this.field.traveling_units.indexOf(other), 1);
+                                this.field.delete_traveling_unit(this.field.traveling_units.indexOf(other));
                                 units.splice(j, 1);
                             }
     
                             if(unit.hp <= 0)
                             {
-                                this.field.traveling_units.splice(this.field.traveling_units.indexOf(unit), 1);
+                                this.field.delete_traveling_unit(this.field.traveling_units.indexOf(unit));
                                 units.splice(i, 1);
                                 break;
                             }
@@ -1157,13 +1157,20 @@ class BattleField {
             const unit = this.traveling_units[i];
             if(!unit.update_state(delta_time))
             {
-                this.traveling_units.splice(i, 1);
+                this.delete_traveling_unit(i);
             }
         }
         const collision_checker = new FieldMap(this, this.traveling_units.length > this.max_traveling_units);
         collision_checker.handle_by_cell();
         if(this.game.session.is_host)
             this.handleAI(delta_time);
+    }
+
+    delete_traveling_unit(index:number):void
+    {
+        const last = this.traveling_units[this.traveling_units.length - 1];
+        this.traveling_units[index] = last;
+        this.traveling_units.pop();
     }
     check_fort_collision(object:SquareAABBCollidable):boolean
     {
